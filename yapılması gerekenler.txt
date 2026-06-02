@@ -1,0 +1,172 @@
+canlı api verileri için aşağıdaki prompt
+
+
+We need to implement a production-ready live match polling system using the API-Football service.
+
+The system must respect strict API limits and support real-time updates for match scores and events.
+
+---
+
+## API Constraints (CRITICAL)
+
+- Daily limit: 100 requests/day
+- Rate limit: 10 requests per minute
+- Do NOT exceed rate limits (avoid bursts)
+- Requests must be evenly distributed over time
+
+---
+
+## Core Requirements
+
+We have up to 4 matches per day.
+
+We will:
+- Use a maximum of 20 requests per match
+- Total daily usage target: ~80 requests (safe under 100)
+
+---
+
+## System Design
+
+### 1. Global Request Queue (VERY IMPORTANT)
+
+Implement a global request queue system:
+- All API calls must go through a single queue
+- Only 1 request is executed at a time
+- Enforce a delay of 7–8 seconds between requests
+
+Example:
+match1 → wait → match2 → wait → match3 → wait → match4 → repeat
+
+---
+
+### 2. Adaptive Polling Strategy
+
+Do NOT split requests evenly by halves.
+
+Instead, implement time-based adaptive polling:
+
+- 0–15 minutes → low frequency (2 requests total)
+- 15–60 minutes → medium frequency (6 requests total)
+- 60–90 minutes → high frequency (8 requests total)
+- 90+ minutes → very high frequency (4 requests total)
+
+Total per match: 20 requests
+
+---
+
+### 3. Smart Data Fetching
+
+Use minimal endpoints whenever possible:
+
+Primary endpoint:
+- Live match data (score, status, minute)
+
+Only fetch events when necessary.
+
+---
+
+### 4. Event-Based Fetch Optimization
+
+DO NOT fetch events on every request.
+
+Instead:
+- Store previous score in memory/cache
+- On each update:
+  IF score changed:
+    → fetch match events (goals and score-state details)
+  ELSE:
+    → skip event request
+
+---
+
+### 5. Event Data Requirements (CRITICAL)
+
+The system may track goals when event data is needed for match context.
+
+---
+
+### 6. Event Processing Rules
+
+- Each event must be uniquely identified (event ID or timestamp)
+- Prevent duplicate processing of the same event
+- Store processed events in cache/state
+
+---
+
+### Scoring Integration
+
+Final match scores must integrate with the user scoring system for prediction validation.
+
+### 7. Match State Handling
+
+Each match should have its own state:
+
+- NOT_STARTED
+- LIVE
+- FINISHED
+
+Behavior:
+- Only poll matches when status = LIVE
+- Stop polling when match = FINISHED
+- When match finishes:
+  → perform ONE final full data fetch (score + events)
+
+---
+
+### 8. Rate Limit Protection
+
+- Never send multiple requests at the same time
+- Ensure max 1 request every ~7 seconds
+- Implement a safeguard to prevent accidental bursts
+
+---
+
+### 9. Fallback System (Optional but Recommended)
+
+If API-Football fails:
+- Switch to fallback API (SportsAPIPro)
+- Retry failed requests with fallback
+
+---
+
+### 10. Data Handling
+
+Store:
+- current score
+- match status
+- last known events
+- last processed timestamp
+
+Prevent:
+- duplicate event processing
+- unnecessary UI updates
+
+---
+
+## Implementation Requirements
+
+- Use JavaScript (Node.js or browser-compatible)
+- Code must be modular and clean
+- Include:
+  - queue manager
+  - polling scheduler
+  - match tracker
+  - caching system
+
+---
+
+## Output
+
+Provide:
+1. Full implementation code
+2. Explanation of architecture
+3. Example flow of 1 live match
+4. How rate limits are enforced
+
+---
+
+IMPORTANT:
+- Do NOT overcomplicate
+- Do NOT ignore rate limits
+- This must be production-safe and efficient

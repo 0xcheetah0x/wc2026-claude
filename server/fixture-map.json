@@ -1,0 +1,1118 @@
+[
+  {
+    "id": 1,
+    "utc": "2026-06-11T19:00:00Z",
+    "home": "Meksika",
+    "away": "Güney Afrika",
+    "homeAliases": [
+      "Meksika",
+      "Mexico"
+    ],
+    "awayAliases": [
+      "Güney Afrika",
+      "South Africa"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 2,
+    "utc": "2026-06-12T02:00:00Z",
+    "home": "Güney Kore",
+    "away": "Çekya",
+    "homeAliases": [
+      "Güney Kore",
+      "South Korea",
+      "Korea Republic",
+      "Republic of Korea"
+    ],
+    "awayAliases": [
+      "Çekya",
+      "Czech Republic",
+      "Czechia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 3,
+    "utc": "2026-06-12T19:00:00Z",
+    "home": "Kanada",
+    "away": "Bosna Hersek",
+    "homeAliases": [
+      "Kanada",
+      "Canada"
+    ],
+    "awayAliases": [
+      "Bosna Hersek",
+      "Bosnia and Herzegovina",
+      "Bosnia-Herzegovina",
+      "Bosnia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 4,
+    "utc": "2026-06-13T01:00:00Z",
+    "home": "ABD",
+    "away": "Paraguay",
+    "homeAliases": [
+      "ABD",
+      "USA",
+      "United States",
+      "United States of America"
+    ],
+    "awayAliases": [
+      "Paraguay"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 5,
+    "utc": "2026-06-13T04:00:00Z",
+    "home": "Avustralya",
+    "away": "Türkiye",
+    "homeAliases": [
+      "Avustralya",
+      "Australia"
+    ],
+    "awayAliases": [
+      "Türkiye",
+      "Turkey",
+      "Turkiye"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 6,
+    "utc": "2026-06-13T19:00:00Z",
+    "home": "Katar",
+    "away": "İsviçre",
+    "homeAliases": [
+      "Katar",
+      "Qatar"
+    ],
+    "awayAliases": [
+      "İsviçre",
+      "Switzerland"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 7,
+    "utc": "2026-06-13T22:00:00Z",
+    "home": "Brezilya",
+    "away": "Fas",
+    "homeAliases": [
+      "Brezilya",
+      "Brazil"
+    ],
+    "awayAliases": [
+      "Fas",
+      "Morocco"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 8,
+    "utc": "2026-06-14T01:00:00Z",
+    "home": "Haiti",
+    "away": "İskoçya",
+    "homeAliases": [
+      "Haiti"
+    ],
+    "awayAliases": [
+      "İskoçya",
+      "Scotland"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 9,
+    "utc": "2026-06-14T17:00:00Z",
+    "home": "Almanya",
+    "away": "Curaçao",
+    "homeAliases": [
+      "Almanya",
+      "Germany"
+    ],
+    "awayAliases": [
+      "Curaçao",
+      "Curacao"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 10,
+    "utc": "2026-06-14T20:00:00Z",
+    "home": "Hollanda",
+    "away": "Japonya",
+    "homeAliases": [
+      "Hollanda",
+      "Netherlands",
+      "Holland"
+    ],
+    "awayAliases": [
+      "Japonya",
+      "Japan"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 11,
+    "utc": "2026-06-14T23:00:00Z",
+    "home": "Fildişi Sah.",
+    "away": "Ekvador",
+    "homeAliases": [
+      "Fildişi Sah.",
+      "Ivory Coast",
+      "Cote d'Ivoire",
+      "Côte d'Ivoire"
+    ],
+    "awayAliases": [
+      "Ekvador",
+      "Ecuador"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 12,
+    "utc": "2026-06-15T02:00:00Z",
+    "home": "İsveç",
+    "away": "Tunus",
+    "homeAliases": [
+      "İsveç",
+      "Sweden"
+    ],
+    "awayAliases": [
+      "Tunus",
+      "Tunisia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 13,
+    "utc": "2026-06-15T16:00:00Z",
+    "home": "İspanya",
+    "away": "Yeşil Burun A.",
+    "homeAliases": [
+      "İspanya",
+      "Spain"
+    ],
+    "awayAliases": [
+      "Yeşil Burun A.",
+      "Cape Verde",
+      "Cabo Verde"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 14,
+    "utc": "2026-06-15T19:00:00Z",
+    "home": "Belçika",
+    "away": "Mısır",
+    "homeAliases": [
+      "Belçika",
+      "Belgium"
+    ],
+    "awayAliases": [
+      "Mısır",
+      "Egypt"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 15,
+    "utc": "2026-06-15T22:00:00Z",
+    "home": "Suudi Arabistan",
+    "away": "Uruguay",
+    "homeAliases": [
+      "Suudi Arabistan",
+      "Saudi Arabia"
+    ],
+    "awayAliases": [
+      "Uruguay"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 16,
+    "utc": "2026-06-16T01:00:00Z",
+    "home": "İran",
+    "away": "Yeni Zelanda",
+    "homeAliases": [
+      "İran",
+      "Iran",
+      "IR Iran"
+    ],
+    "awayAliases": [
+      "Yeni Zelanda",
+      "New Zealand"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 17,
+    "utc": "2026-06-16T19:00:00Z",
+    "home": "Fransa",
+    "away": "Senegal",
+    "homeAliases": [
+      "Fransa",
+      "France"
+    ],
+    "awayAliases": [
+      "Senegal"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 18,
+    "utc": "2026-06-16T22:00:00Z",
+    "home": "Irak",
+    "away": "Norveç",
+    "homeAliases": [
+      "Irak",
+      "Iraq"
+    ],
+    "awayAliases": [
+      "Norveç",
+      "Norway"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 19,
+    "utc": "2026-06-17T01:00:00Z",
+    "home": "Arjantin",
+    "away": "Cezayir",
+    "homeAliases": [
+      "Arjantin",
+      "Argentina"
+    ],
+    "awayAliases": [
+      "Cezayir",
+      "Algeria"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 20,
+    "utc": "2026-06-16T07:00:00Z",
+    "home": "Avusturya",
+    "away": "Ürdün",
+    "homeAliases": [
+      "Avusturya",
+      "Austria"
+    ],
+    "awayAliases": [
+      "Ürdün",
+      "Jordan"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 21,
+    "utc": "2026-06-17T17:00:00Z",
+    "home": "Portekiz",
+    "away": "Kongo",
+    "homeAliases": [
+      "Portekiz",
+      "Portugal"
+    ],
+    "awayAliases": [
+      "Kongo",
+      "Congo",
+      "Congo DR",
+      "DR Congo",
+      "Democratic Republic of Congo",
+      "Congo Kinshasa"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 22,
+    "utc": "2026-06-17T20:00:00Z",
+    "home": "İngiltere",
+    "away": "Hırvatistan",
+    "homeAliases": [
+      "İngiltere",
+      "England"
+    ],
+    "awayAliases": [
+      "Hırvatistan",
+      "Croatia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 23,
+    "utc": "2026-06-17T23:00:00Z",
+    "home": "Gana",
+    "away": "Panama",
+    "homeAliases": [
+      "Gana",
+      "Ghana"
+    ],
+    "awayAliases": [
+      "Panama"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 24,
+    "utc": "2026-06-18T02:00:00Z",
+    "home": "Özbekistan",
+    "away": "Kolombiya",
+    "homeAliases": [
+      "Özbekistan",
+      "Uzbekistan"
+    ],
+    "awayAliases": [
+      "Kolombiya",
+      "Colombia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 25,
+    "utc": "2026-06-18T16:00:00Z",
+    "home": "Çekya",
+    "away": "Güney Afrika",
+    "homeAliases": [
+      "Çekya",
+      "Czech Republic",
+      "Czechia"
+    ],
+    "awayAliases": [
+      "Güney Afrika",
+      "South Africa"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 26,
+    "utc": "2026-06-18T19:00:00Z",
+    "home": "İsviçre",
+    "away": "Bosna Hersek",
+    "homeAliases": [
+      "İsviçre",
+      "Switzerland"
+    ],
+    "awayAliases": [
+      "Bosna Hersek",
+      "Bosnia and Herzegovina",
+      "Bosnia-Herzegovina",
+      "Bosnia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 27,
+    "utc": "2026-06-18T22:00:00Z",
+    "home": "Kanada",
+    "away": "Katar",
+    "homeAliases": [
+      "Kanada",
+      "Canada"
+    ],
+    "awayAliases": [
+      "Katar",
+      "Qatar"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 28,
+    "utc": "2026-06-19T01:00:00Z",
+    "home": "Meksika",
+    "away": "Güney Kore",
+    "homeAliases": [
+      "Meksika",
+      "Mexico"
+    ],
+    "awayAliases": [
+      "Güney Kore",
+      "South Korea",
+      "Korea Republic",
+      "Republic of Korea"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 29,
+    "utc": "2026-06-19T04:00:00Z",
+    "home": "Türkiye",
+    "away": "Paraguay",
+    "homeAliases": [
+      "Türkiye",
+      "Turkey",
+      "Turkiye"
+    ],
+    "awayAliases": [
+      "Paraguay"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 30,
+    "utc": "2026-06-19T19:00:00Z",
+    "home": "ABD",
+    "away": "Avustralya",
+    "homeAliases": [
+      "ABD",
+      "USA",
+      "United States",
+      "United States of America"
+    ],
+    "awayAliases": [
+      "Avustralya",
+      "Australia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 31,
+    "utc": "2026-06-19T22:00:00Z",
+    "home": "İskoçya",
+    "away": "Fas",
+    "homeAliases": [
+      "İskoçya",
+      "Scotland"
+    ],
+    "awayAliases": [
+      "Fas",
+      "Morocco"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 32,
+    "utc": "2026-06-20T01:00:00Z",
+    "home": "Brezilya",
+    "away": "Haiti",
+    "homeAliases": [
+      "Brezilya",
+      "Brazil"
+    ],
+    "awayAliases": [
+      "Haiti"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 33,
+    "utc": "2026-06-20T04:00:00Z",
+    "home": "Tunus",
+    "away": "Japonya",
+    "homeAliases": [
+      "Tunus",
+      "Tunisia"
+    ],
+    "awayAliases": [
+      "Japonya",
+      "Japan"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 34,
+    "utc": "2026-06-20T17:00:00Z",
+    "home": "Hollanda",
+    "away": "İsveç",
+    "homeAliases": [
+      "Hollanda",
+      "Netherlands",
+      "Holland"
+    ],
+    "awayAliases": [
+      "İsveç",
+      "Sweden"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 35,
+    "utc": "2026-06-20T20:00:00Z",
+    "home": "Almanya",
+    "away": "Fildişi Sah.",
+    "homeAliases": [
+      "Almanya",
+      "Germany"
+    ],
+    "awayAliases": [
+      "Fildişi Sah.",
+      "Ivory Coast",
+      "Cote d'Ivoire",
+      "Côte d'Ivoire"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 36,
+    "utc": "2026-06-21T00:00:00Z",
+    "home": "Ekvador",
+    "away": "Curaçao",
+    "homeAliases": [
+      "Ekvador",
+      "Ecuador"
+    ],
+    "awayAliases": [
+      "Curaçao",
+      "Curacao"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 37,
+    "utc": "2026-06-21T16:00:00Z",
+    "home": "İspanya",
+    "away": "Suudi Arabistan",
+    "homeAliases": [
+      "İspanya",
+      "Spain"
+    ],
+    "awayAliases": [
+      "Suudi Arabistan",
+      "Saudi Arabia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 38,
+    "utc": "2026-06-21T19:00:00Z",
+    "home": "Belçika",
+    "away": "İran",
+    "homeAliases": [
+      "Belçika",
+      "Belgium"
+    ],
+    "awayAliases": [
+      "İran",
+      "Iran",
+      "IR Iran"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 39,
+    "utc": "2026-06-21T22:00:00Z",
+    "home": "Uruguay",
+    "away": "Yeşil Burun A.",
+    "homeAliases": [
+      "Uruguay"
+    ],
+    "awayAliases": [
+      "Yeşil Burun A.",
+      "Cape Verde",
+      "Cabo Verde"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 40,
+    "utc": "2026-06-22T01:00:00Z",
+    "home": "Yeni Zelanda",
+    "away": "Mısır",
+    "homeAliases": [
+      "Yeni Zelanda",
+      "New Zealand"
+    ],
+    "awayAliases": [
+      "Mısır",
+      "Egypt"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 41,
+    "utc": "2026-06-22T17:00:00Z",
+    "home": "Arjantin",
+    "away": "Avusturya",
+    "homeAliases": [
+      "Arjantin",
+      "Argentina"
+    ],
+    "awayAliases": [
+      "Avusturya",
+      "Austria"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 42,
+    "utc": "2026-06-22T21:00:00Z",
+    "home": "Fransa",
+    "away": "Irak",
+    "homeAliases": [
+      "Fransa",
+      "France"
+    ],
+    "awayAliases": [
+      "Irak",
+      "Iraq"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 43,
+    "utc": "2026-06-23T00:00:00Z",
+    "home": "Norveç",
+    "away": "Senegal",
+    "homeAliases": [
+      "Norveç",
+      "Norway"
+    ],
+    "awayAliases": [
+      "Senegal"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 44,
+    "utc": "2026-06-23T03:00:00Z",
+    "home": "Ürdün",
+    "away": "Cezayir",
+    "homeAliases": [
+      "Ürdün",
+      "Jordan"
+    ],
+    "awayAliases": [
+      "Cezayir",
+      "Algeria"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 45,
+    "utc": "2026-06-23T17:00:00Z",
+    "home": "Portekiz",
+    "away": "Özbekistan",
+    "homeAliases": [
+      "Portekiz",
+      "Portugal"
+    ],
+    "awayAliases": [
+      "Özbekistan",
+      "Uzbekistan"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 46,
+    "utc": "2026-06-23T20:00:00Z",
+    "home": "İngiltere",
+    "away": "Gana",
+    "homeAliases": [
+      "İngiltere",
+      "England"
+    ],
+    "awayAliases": [
+      "Gana",
+      "Ghana"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 47,
+    "utc": "2026-06-23T23:00:00Z",
+    "home": "Panama",
+    "away": "Hırvatistan",
+    "homeAliases": [
+      "Panama"
+    ],
+    "awayAliases": [
+      "Hırvatistan",
+      "Croatia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 48,
+    "utc": "2026-06-24T02:00:00Z",
+    "home": "Kolombiya",
+    "away": "Kongo",
+    "homeAliases": [
+      "Kolombiya",
+      "Colombia"
+    ],
+    "awayAliases": [
+      "Kongo",
+      "Congo",
+      "Congo DR",
+      "DR Congo",
+      "Democratic Republic of Congo",
+      "Congo Kinshasa"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 49,
+    "utc": "2026-06-24T19:00:00Z",
+    "home": "İsviçre",
+    "away": "Kanada",
+    "homeAliases": [
+      "İsviçre",
+      "Switzerland"
+    ],
+    "awayAliases": [
+      "Kanada",
+      "Canada"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 50,
+    "utc": "2026-06-24T19:00:00Z",
+    "home": "Bosna Hersek",
+    "away": "Katar",
+    "homeAliases": [
+      "Bosna Hersek",
+      "Bosnia and Herzegovina",
+      "Bosnia-Herzegovina",
+      "Bosnia"
+    ],
+    "awayAliases": [
+      "Katar",
+      "Qatar"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 51,
+    "utc": "2026-06-24T22:00:00Z",
+    "home": "İskoçya",
+    "away": "Brezilya",
+    "homeAliases": [
+      "İskoçya",
+      "Scotland"
+    ],
+    "awayAliases": [
+      "Brezilya",
+      "Brazil"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 52,
+    "utc": "2026-06-24T22:00:00Z",
+    "home": "Fas",
+    "away": "Haiti",
+    "homeAliases": [
+      "Fas",
+      "Morocco"
+    ],
+    "awayAliases": [
+      "Haiti"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 53,
+    "utc": "2026-06-25T01:00:00Z",
+    "home": "Çekya",
+    "away": "Meksika",
+    "homeAliases": [
+      "Çekya",
+      "Czech Republic",
+      "Czechia"
+    ],
+    "awayAliases": [
+      "Meksika",
+      "Mexico"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 54,
+    "utc": "2026-06-25T01:00:00Z",
+    "home": "Güney Afrika",
+    "away": "Güney Kore",
+    "homeAliases": [
+      "Güney Afrika",
+      "South Africa"
+    ],
+    "awayAliases": [
+      "Güney Kore",
+      "South Korea",
+      "Korea Republic",
+      "Republic of Korea"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 55,
+    "utc": "2026-06-25T20:00:00Z",
+    "home": "Curaçao",
+    "away": "Fildişi Sah.",
+    "homeAliases": [
+      "Curaçao",
+      "Curacao"
+    ],
+    "awayAliases": [
+      "Fildişi Sah.",
+      "Ivory Coast",
+      "Cote d'Ivoire",
+      "Côte d'Ivoire"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 56,
+    "utc": "2026-06-25T20:00:00Z",
+    "home": "Ekvador",
+    "away": "Almanya",
+    "homeAliases": [
+      "Ekvador",
+      "Ecuador"
+    ],
+    "awayAliases": [
+      "Almanya",
+      "Germany"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 57,
+    "utc": "2026-06-25T23:00:00Z",
+    "home": "Japonya",
+    "away": "İsveç",
+    "homeAliases": [
+      "Japonya",
+      "Japan"
+    ],
+    "awayAliases": [
+      "İsveç",
+      "Sweden"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 58,
+    "utc": "2026-06-25T23:00:00Z",
+    "home": "Tunus",
+    "away": "Hollanda",
+    "homeAliases": [
+      "Tunus",
+      "Tunisia"
+    ],
+    "awayAliases": [
+      "Hollanda",
+      "Netherlands",
+      "Holland"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 59,
+    "utc": "2026-06-26T02:00:00Z",
+    "home": "Türkiye",
+    "away": "ABD",
+    "homeAliases": [
+      "Türkiye",
+      "Turkey",
+      "Turkiye"
+    ],
+    "awayAliases": [
+      "ABD",
+      "USA",
+      "United States",
+      "United States of America"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 60,
+    "utc": "2026-06-26T02:00:00Z",
+    "home": "Paraguay",
+    "away": "Avustralya",
+    "homeAliases": [
+      "Paraguay"
+    ],
+    "awayAliases": [
+      "Avustralya",
+      "Australia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 61,
+    "utc": "2026-06-26T19:00:00Z",
+    "home": "Norveç",
+    "away": "Fransa",
+    "homeAliases": [
+      "Norveç",
+      "Norway"
+    ],
+    "awayAliases": [
+      "Fransa",
+      "France"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 62,
+    "utc": "2026-06-26T19:00:00Z",
+    "home": "Senegal",
+    "away": "Irak",
+    "homeAliases": [
+      "Senegal"
+    ],
+    "awayAliases": [
+      "Irak",
+      "Iraq"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 63,
+    "utc": "2026-06-27T00:00:00Z",
+    "home": "Yeşil Burun A.",
+    "away": "Suudi Arabistan",
+    "homeAliases": [
+      "Yeşil Burun A.",
+      "Cape Verde",
+      "Cabo Verde"
+    ],
+    "awayAliases": [
+      "Suudi Arabistan",
+      "Saudi Arabia"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 64,
+    "utc": "2026-06-27T00:00:00Z",
+    "home": "Uruguay",
+    "away": "İspanya",
+    "homeAliases": [
+      "Uruguay"
+    ],
+    "awayAliases": [
+      "İspanya",
+      "Spain"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 65,
+    "utc": "2026-06-27T03:00:00Z",
+    "home": "Mısır",
+    "away": "İran",
+    "homeAliases": [
+      "Mısır",
+      "Egypt"
+    ],
+    "awayAliases": [
+      "İran",
+      "Iran",
+      "IR Iran"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 66,
+    "utc": "2026-06-27T03:00:00Z",
+    "home": "Yeni Zelanda",
+    "away": "Belçika",
+    "homeAliases": [
+      "Yeni Zelanda",
+      "New Zealand"
+    ],
+    "awayAliases": [
+      "Belçika",
+      "Belgium"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 67,
+    "utc": "2026-06-27T21:00:00Z",
+    "home": "Panama",
+    "away": "İngiltere",
+    "homeAliases": [
+      "Panama"
+    ],
+    "awayAliases": [
+      "İngiltere",
+      "England"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 68,
+    "utc": "2026-06-27T21:00:00Z",
+    "home": "Hırvatistan",
+    "away": "Gana",
+    "homeAliases": [
+      "Hırvatistan",
+      "Croatia"
+    ],
+    "awayAliases": [
+      "Gana",
+      "Ghana"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 69,
+    "utc": "2026-06-27T23:30:00Z",
+    "home": "Kolombiya",
+    "away": "Portekiz",
+    "homeAliases": [
+      "Kolombiya",
+      "Colombia"
+    ],
+    "awayAliases": [
+      "Portekiz",
+      "Portugal"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 70,
+    "utc": "2026-06-27T23:30:00Z",
+    "home": "Kongo",
+    "away": "Özbekistan",
+    "homeAliases": [
+      "Kongo",
+      "Congo",
+      "Congo DR",
+      "DR Congo",
+      "Democratic Republic of Congo",
+      "Congo Kinshasa"
+    ],
+    "awayAliases": [
+      "Özbekistan",
+      "Uzbekistan"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 71,
+    "utc": "2026-06-28T02:00:00Z",
+    "home": "Cezayir",
+    "away": "Avusturya",
+    "homeAliases": [
+      "Cezayir",
+      "Algeria"
+    ],
+    "awayAliases": [
+      "Avusturya",
+      "Austria"
+    ],
+    "apiFixtureId": null
+  },
+  {
+    "id": 72,
+    "utc": "2026-06-28T02:00:00Z",
+    "home": "Ürdün",
+    "away": "Arjantin",
+    "homeAliases": [
+      "Ürdün",
+      "Jordan"
+    ],
+    "awayAliases": [
+      "Arjantin",
+      "Argentina"
+    ],
+    "apiFixtureId": null
+  }
+]

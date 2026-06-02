@@ -1,0 +1,15 @@
+{
+  "name": "wc2026-live-feed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live score proxy using API-Football with event tracking",
+  "main": "live-server.js",
+  "scripts": {
+    "start": "node live-server.js",
+    "set-score": "node set-score.js",
+    "update:scores:mock": "node -e \"process.env.DRY_RUN='1';process.env.MOCK_FIXTURES='1';const u=require('./update-scores');u.main().catch(u.handleCliError)\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

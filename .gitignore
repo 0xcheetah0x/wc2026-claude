@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+
+server/.api-budget.json
+server/.score-cache.json
+
+# Local frontend production config. Copy config.example.js to this name for
+# local testing, then keep real Supabase values out of git.
+config.local.js

@@ -1,0 +1,140 @@
+[
+  {
+    "id": "legend-01",
+    "name": "MESSI",
+    "country": "ARG",
+    "file": "legend-01-messi.svg"
+  },
+  {
+    "id": "legend-02",
+    "name": "C.RONALDO",
+    "country": "POR",
+    "file": "legend-02-c-ronaldo.svg"
+  },
+  {
+    "id": "legend-03",
+    "name": "MBAPPE",
+    "country": "FRA",
+    "file": "legend-03-mbappe.svg"
+  },
+  {
+    "id": "legend-04",
+    "name": "VINICIUS JR",
+    "country": "BRA",
+    "file": "legend-04-vinicius-jr.svg"
+  },
+  {
+    "id": "legend-05",
+    "name": "MARADONA",
+    "country": "ARG",
+    "file": "legend-05-maradona.svg"
+  },
+  {
+    "id": "legend-06",
+    "name": "ZIDANE",
+    "country": "FRA",
+    "file": "legend-06-zidane.svg"
+  },
+  {
+    "id": "legend-07",
+    "name": "PELE",
+    "country": "BRA",
+    "file": "legend-07-pele.svg"
+  },
+  {
+    "id": "legend-08",
+    "name": "R.NAZARIO",
+    "country": "BRA",
+    "file": "legend-08-r-nazario.svg"
+  },
+  {
+    "id": "legend-09",
+    "name": "CANTONA",
+    "country": "FRA",
+    "file": "legend-09-cantona.svg"
+  },
+  {
+    "id": "legend-10",
+    "name": "MALDINI",
+    "country": "ITA",
+    "file": "legend-10-maldini.svg"
+  },
+  {
+    "id": "legend-11",
+    "name": "BECKHAM",
+    "country": "ENG",
+    "file": "legend-11-beckham.svg"
+  },
+  {
+    "id": "legend-12",
+    "name": "CRUYFF",
+    "country": "NED",
+    "file": "legend-12-cruyff.svg"
+  },
+  {
+    "id": "legend-13",
+    "name": "O.KAHN",
+    "country": "GER",
+    "file": "legend-13-o-kahn.svg"
+  },
+  {
+    "id": "legend-14",
+    "name": "ROONEY",
+    "country": "ENG",
+    "file": "legend-14-rooney.svg"
+  },
+  {
+    "id": "legend-15",
+    "name": "R.BAGGIO",
+    "country": "ITA",
+    "file": "legend-15-r-baggio.svg"
+  },
+  {
+    "id": "legend-16",
+    "name": "BUFFON",
+    "country": "ITA",
+    "file": "legend-16-buffon.svg"
+  },
+  {
+    "id": "legend-17",
+    "name": "RAUL",
+    "country": "ESP",
+    "file": "legend-17-raul.svg"
+  },
+  {
+    "id": "legend-18",
+    "name": "IBRAHIMOVIC",
+    "country": "SWE",
+    "file": "legend-18-ibrahimovic.svg"
+  },
+  {
+    "id": "legend-19",
+    "name": "VAN NISTELROOY",
+    "country": "NED",
+    "file": "legend-19-van-nistelrooy.svg"
+  },
+  {
+    "id": "legend-20",
+    "name": "BATISTUTA",
+    "country": "ARG",
+    "file": "legend-20-batistuta.svg"
+  },
+  {
+    "id": "legend-21",
+    "name": "FIGO",
+    "country": "POR",
+    "file": "legend-21-figo.svg"
+  },
+  {
+    "id": "legend-22",
+    "name": "ROBBEN",
+    "country": "NED",
+    "file": "legend-22-robben.svg"
+  },
+  {
+    "id": "legend-23",
+    "name": "DROGBA",
+    "country": "CIV",
+    "file": "legend-23-drogba.svg"
+  }
+]

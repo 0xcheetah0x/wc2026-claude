@@ -1,0 +1,224 @@
+
+<style>
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/press-start-2p@5.0.18/index.css');
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0 2rem}
+.hdr{text-align:center;margin-bottom:1.5rem}
+.ttl{font-family:'Press Start 2P',monospace;font-size:13px;color:var(--color-text-primary);letter-spacing:3px}
+.sub{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--color-text-secondary);margin-top:8px;letter-spacing:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
+.card{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-top:3px solid var(--jc);border-radius:var(--border-radius-md);padding:10px 8px 8px;text-align:center;cursor:pointer;transition:border-color 0.12s,transform 0.12s;position:relative}
+.card:hover{border-color:var(--jc);transform:translateY(-3px)}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:0 auto 7px;width:80px;height:80px}
+.pn{font-family:'Press Start 2P',monospace;font-size:5px;color:var(--color-text-primary);line-height:1.9;min-height:18px}
+.pc{font-family:'Press Start 2P',monospace;font-size:5px;color:var(--color-text-secondary);margin-top:3px}
+.pidx{position:absolute;top:4px;right:6px;font-family:'Press Start 2P',monospace;font-size:4px;color:var(--color-text-tertiary)}
+</style>
+
+<div class="wrap">
+<div class="hdr">
+  <div class="ttl">PIXEL LEGENDS</div>
+  <div class="sub">FIFA WORLD CUP 2026</div>
+</div>
+<div class="grid" id="g"></div>
+</div>
+
+<script>
+const P=[
+ {n:'MESSI',       c:'ARG', s:'#f4c5a0',h:'#2d1b0e',j1:'#75aadb',j2:'#ffffff',hs:'short',   js:'vstripes'},
+ {n:'C.RONALDO',   c:'POR', s:'#d4a574',h:'#111111',j1:'#cc0000',j2:'#006400',hs:'normal',  js:'solid'},
+ {n:'MBAPPE',      c:'FRA', s:'#5c3317',h:'#111111',j1:'#002395',j2:'#ed2939',hs:'short',   js:'solid'},
+ {n:'VINICIUS JR', c:'BRA', s:'#5c3d2e',h:'#111111',j1:'#ffd700',j2:'#009c3b',hs:'normal',  js:'solid'},
+ {n:'MARADONA',    c:'ARG', s:'#c8966a',h:'#111111',j1:'#75aadb',j2:'#ffffff',hs:'afro',    js:'vstripes'},
+ {n:'ZIDANE',      c:'FRA', s:'#c8966a',h:null,     j1:'#002395',j2:'#ed2939',hs:'bald',    js:'solid'},
+ {n:'PELE',        c:'BRA', s:'#3d2010',h:'#0d0d0d',j1:'#ffd700',j2:'#009c3b',hs:'short',   js:'solid'},
+ {n:'R.NAZARIO',   c:'BRA', s:'#4a2e1a',h:'#0d0d0d',j1:'#ffd700',j2:'#009c3b',hs:'short',   js:'solid'},
+ {n:'CANTONA',     c:'FRA', s:'#e8c09a',h:'#111111',j1:'#002395',j2:'#ed2939',hs:'normal',  js:'solid',bd:true},
+ {n:'MALDINI',     c:'ITA', s:'#c8966a',h:'#111111',j1:'#003399',j2:'#ffffff',hs:'normal',  js:'solid'},
+ {n:'BECKHAM',     c:'ENG', s:'#f0c8a0',h:'#8b5e3c',j1:'#f0f0f0',j2:'#cc0000',hs:'normal',  js:'solid'},
+ {n:'CRUYFF',      c:'NED', s:'#f0d0b0',h:'#5c3317',j1:'#ff6600',j2:'#ffffff',hs:'normal',  js:'solid'},
+ {n:'O.KAHN',      c:'GER', s:'#f0d0b0',h:'#111111',j1:'#f0f0f0',j2:'#000000',hs:'short',   js:'solid'},
+ {n:'ROONEY',      c:'ENG', s:'#f4c5a0',h:'#5c3317',j1:'#f0f0f0',j2:'#cc0000',hs:'short',   js:'solid'},
+ {n:'R.BAGGIO',    c:'ITA', s:'#d4a574',h:'#111111',j1:'#003399',j2:'#ffffff',hs:'ponytail',js:'solid'},
+ {n:'BUFFON',      c:'ITA', s:'#d4a574',h:'#8b7355',j1:'#003399',j2:'#ffffff',hs:'normal',  js:'solid'},
+ {n:'RAUL',        c:'ESP', s:'#d4b896',h:'#111111',j1:'#cc0000',j2:'#ffd700',hs:'normal',  js:'solid'},
+ {n:'IBRAHIMOVIC', c:'SWE', s:'#c8966a',h:'#111111',j1:'#ffd700',j2:'#006aa7',hs:'normal',  js:'solid',bd:true},
+ {n:'VAN NISTELROOY',c:'NED',s:'#f0d0b0',h:'#8b5e3c',j1:'#ff6600',j2:'#ffffff',hs:'short',  js:'solid'},
+ {n:'BATISTUTA',   c:'ARG', s:'#c8966a',h:'#2d1b0e',j1:'#75aadb',j2:'#ffffff',hs:'long',    js:'vstripes'},
+ {n:'FIGO',        c:'POR', s:'#d4a06a',h:'#111111',j1:'#cc0000',j2:'#006400',hs:'normal',  js:'solid'},
+ {n:'ROBBEN',      c:'NED', s:'#f0d0b0',h:null,     j1:'#ff6600',j2:'#ffffff',hs:'bald',    js:'solid'},
+ {n:'DROGBA',      c:'CIV', s:'#2d1b0e',h:'#0d0d0d',j1:'#ff8800',j2:'#009a44',hs:'short',   js:'hstripes'},
+];
+
+function dk(hex,f){if(!hex||hex[0]!='#')return hex||'#888';const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`}
+function lk(hex,f){if(!hex||hex[0]!='#')return hex||'#888';const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgb(${Math.min(255,Math.round(r*f))},${Math.min(255,Math.round(g*f))},${Math.min(255,Math.round(b*f)})`}
+
+function draw(canvas,cfg){
+  const ctx=canvas.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
+  const S=5,W=16,H=16;
+  const {s:skin,h:hair,j1,j2,hs,js,bd=false}=cfg;
+  const eyeC='#111111', mC='#7c3f2a';
+  const hairC=hair||dk(skin,0.82);
+  const neck=dk(skin,0.86);
+  const nose=dk(skin,0.70);
+
+  function px(c,r,col){if(c<0||c>15||r<0||r>15||!col)return;ctx.fillStyle=col;ctx.fillRect(c*S,r*S,S,S)}
+
+  // BG subtle gradient feel
+  for(let r=0;r<16;r++)for(let c=0;c<16;c++)px(c,r,r>10?dk(j1,0.18):dk(j1,0.12));
+
+  // Jersey rows 11-15
+  const jRows=[{r:11,cs:5,ce:10},{r:12,cs:4,ce:11},{r:13,cs:3,ce:12},{r:14,cs:3,ce:12},{r:15,cs:3,ce:12}];
+  for(const {r,cs,ce} of jRows){
+    for(let c=cs;c<=ce;c++){
+      let jc=j1;
+      if(js==='vstripes') jc=(Math.floor(c/2)%2===0)?j2:j1;
+      else if(js==='hstripes') jc=r%2===0?j1:j2;
+      px(c,r,jc);
+    }
+    // jersey side shadows
+    if(r>=13){px(cs,r,dk(j1,0.75));px(ce,r,dk(j1,0.75))}
+  }
+  // collar V
+  px(7,11,j2);px(8,11,j2);
+  // jersey number hint (rows 13-14, center)
+  px(7,13,dk(j1,0.65));px(8,13,dk(j1,0.65));
+  px(7,14,dk(j1,0.65));px(8,14,dk(j1,0.65));
+
+  // Neck
+  for(let c=6;c<=9;c++)px(c,10,neck);
+  // Neck shadow sides
+  px(6,10,dk(neck,0.85));px(9,10,dk(neck,0.85));
+
+  // Face base
+  for(let c=4;c<=11;c++)px(c,3,skin);
+  for(let r=4;r<=8;r++)for(let c=3;c<=12;c++)px(c,r,skin);
+  for(let c=4;c<=11;c++)px(c,9,skin);
+  // Cheek shadow
+  px(3,6,dk(skin,0.88));px(12,6,dk(skin,0.88));
+  px(3,7,dk(skin,0.84));px(12,7,dk(skin,0.84));
+  px(3,8,dk(skin,0.84));px(12,8,dk(skin,0.84));
+  // Ear detail
+  px(3,5,skin);px(3,6,skin);
+  px(12,5,skin);px(12,6,skin);
+  px(3,5,dk(skin,0.80));px(12,5,dk(skin,0.80));
+
+  // Hair by style
+  if(hs==='bald'){
+    for(let c=4;c<=11;c++)px(c,1,dk(skin,0.88));
+    for(let c=3;c<=12;c++)px(c,2,dk(skin,0.90));
+    for(let c=4;c<=11;c++)px(c,3,dk(skin,0.93));
+    // specular
+    px(7,1,lk(skin,1.18));px(8,1,lk(skin,1.12));
+    px(6,2,lk(skin,1.10));
+  } else if(hs==='afro'){
+    for(let c=3;c<=12;c++)px(c,0,hairC);
+    for(let c=2;c<=13;c++)px(c,1,hairC);
+    for(let c=1;c<=14;c++)px(c,2,hairC);
+    for(let c=2;c<=13;c++)px(c,3,hairC);
+    px(2,4,hairC);px(13,4,hairC);
+    px(2,5,hairC);px(13,5,hairC);
+    // afro volume highlights
+    px(5,1,lk(hairC,1.35));px(9,1,lk(hairC,1.25));
+    px(4,2,lk(hairC,1.2));px(11,2,lk(hairC,1.2));
+    // Restore center face row 3
+    for(let c=5;c<=10;c++)px(c,3,skin);
+    for(let c=5;c<=10;c++)px(c,3,skin);
+  } else if(hs==='long'){
+    for(let c=4;c<=11;c++)px(c,1,hairC);
+    for(let c=3;c<=12;c++)px(c,2,hairC);
+    for(let c=3;c<=12;c++)px(c,3,hairC);
+    for(let c=5;c<=10;c++)px(c,3,skin);
+    // Long flowing sides
+    for(let r=4;r<=13;r++){px(2,r,hairC);px(3,r,hairC);px(12,r,hairC);px(13,r,hairC)}
+    // Restore face pixel edges
+    for(let r=4;r<=8;r++){px(3,r,skin);px(12,r,skin)}
+    // Highlight
+    px(7,1,lk(hairC,1.4));px(8,1,lk(hairC,1.25));
+    // Hair flow shading
+    for(let r=5;r<=12;r++){px(2,r,dk(hairC,0.80));px(13,r,dk(hairC,0.80))}
+  } else if(hs==='ponytail'){
+    for(let c=4;c<=11;c++)px(c,1,hairC);
+    for(let c=3;c<=12;c++)px(c,2,hairC);
+    for(let c=3;c<=12;c++)px(c,3,hairC);
+    for(let c=5;c<=10;c++)px(c,3,skin);
+    px(3,4,hairC);px(12,4,hairC);
+    // Ponytail right side
+    for(let r=2;r<=12;r++)px(13,r,hairC);
+    for(let r=3;r<=9;r++)px(14,r,hairC);
+    px(15,4,hairC);px(15,5,hairC);px(15,6,hairC);px(15,7,hairC);
+    px(14,10,hairC);px(13,11,hairC);
+    px(7,1,lk(hairC,1.35));
+  } else if(hs==='short'){
+    for(let c=4;c<=11;c++)px(c,1,hairC);
+    for(let c=3;c<=12;c++)px(c,2,hairC);
+    for(let c=3;c<=12;c++)px(c,3,hairC);
+    for(let c=5;c<=10;c++)px(c,3,skin);
+    px(3,4,hairC);px(12,4,hairC);
+    px(7,1,lk(hairC,1.4));
+  } else {
+    // normal
+    for(let c=4;c<=11;c++)px(c,1,hairC);
+    for(let c=3;c<=12;c++)px(c,2,hairC);
+    for(let c=3;c<=12;c++)px(c,3,hairC);
+    for(let c=5;c<=10;c++)px(c,3,skin);
+    px(3,4,hairC);px(12,4,hairC);
+    px(7,1,lk(hairC,1.38));px(8,1,lk(hairC,1.2));
+  }
+
+  // Eyebrows
+  const brow=hair||eyeC;
+  px(5,4,brow);px(6,4,brow);
+  px(9,4,brow);px(10,4,brow);
+  // Eyebrow depth
+  px(5,4,dk(brow,0.7));px(10,4,dk(brow,0.7));
+
+  // Eyes - whites then iris
+  px(5,5,'#e8e8e8');px(9,5,'#e8e8e8');
+  px(5,5,eyeC);px(9,5,eyeC);
+  // Eye glint
+  px(5,5,eyeC);px(9,5,eyeC);
+
+  // Nose (rows 6-7)
+  px(7,6,nose);px(7,7,nose);
+  px(6,7,dk(skin,0.88));px(8,7,dk(skin,0.88));
+
+  // Mouth
+  px(6,8,mC);px(7,8,mC);px(8,8,mC);
+  // Upper lip hint
+  px(6,8,dk(mC,0.8));px(8,8,dk(mC,0.8));
+
+  // Chin shadow
+  px(6,9,dk(skin,0.88));px(7,9,dk(skin,0.84));px(8,9,dk(skin,0.88));
+
+  // Beard
+  if(bd){
+    const bc=hair||'#222222';
+    px(5,7,bc);px(6,7,bc);px(8,7,bc);px(9,7,bc);
+    px(4,8,bc);px(5,8,bc);px(9,8,bc);px(10,8,bc);
+    for(let c=4;c<=11;c++)px(c,9,bc);
+    px(3,8,bc);px(11,8,bc);
+    // redraw mouth over beard
+    px(6,8,dk(mC,0.6));px(7,8,dk(mC,0.7));px(8,8,dk(mC,0.6));
+  }
+}
+
+const grid=document.getElementById('g');
+P.forEach((p,i)=>{
+  const card=document.createElement('div');
+  card.className='card';
+  card.style.setProperty('--jc',p.j1);
+  card.innerHTML=`<div class="pidx">${String(i+1).padStart(2,'0')}</div>`;
+  const cv=document.createElement('canvas');
+  cv.width=80;cv.height=80;
+  card.appendChild(cv);
+  const nm=document.createElement('div');
+  nm.className='pn';nm.textContent=p.n;
+  const ct=document.createElement('div');
+  ct.className='pc';ct.textContent=p.c;
+  card.appendChild(nm);card.appendChild(ct);
+  grid.appendChild(card);
+  draw(cv,p);
+});
+</script>

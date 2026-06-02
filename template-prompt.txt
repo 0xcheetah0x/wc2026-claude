@@ -1,0 +1,68 @@
+# Summary
+
+An 'Ultra Detail Edition' sports league dashboard utilizing a three-column grid for tactical analysis, match performance data, and league standings. It employs a high-contrast dark theme (#070d18) with gold (#d4af37) accents, utilizing technical typography like JetBrains Mono for data points and General Sans for bold headings.
+
+# Style
+
+The style is 'Simulation-Core' - high information density with a military/analytical feel. It uses a base of Deep Navy (#1a2a4a) and Carbon Black (#050a14) with Gold (#d4af37) for primary actions and highlights. Typography is tiered: General Sans for headers (900 weight), Satoshi for UI elements, and JetBrains Mono for numeric data. Borders are subtle (#1e293b) and cards have sharp 2px corners to mimic vintage software interfaces.
+
+## Spec
+
+Create a high-density dashboard UI with a 'Football Manager' simulation aesthetic. 
+- **Color Palette**: Background #070d18, Sidebars #050a14, Secondary Navy #1a2a4a, Primary Accent Gold #d4af37, Text Light Slate #cbd5e1.
+- **Typography**: Use 'General Sans' for uppercase, tracked-out headings (weight: 700+). Use 'Satoshi' for body text (size 10-12px). Use 'JetBrains Mono' for all numeric values and status codes (size 9px).
+- **Visual Elements**: 1px solid borders (#1e293b), sharp 2px border-radius on cards, subtle paper/grain texture overlays (opacity 0.04), and grid-based 'pitch' backgrounds with 20px intervals.
+- **Interactive states**: Active sidebar items get a 3px gold left border and #1a2a4a background. Buttons use #d4af37 background with #050a14 text for maximum contrast.
+- **Animation**: Micro-pulse effects on status indicators (e.g., green-500 dots) and cubic-bezier transitions on hover states.
+
+# Layout & Structure
+
+The layout uses a fixed-height sidebar with a multi-column main content area. Content is divided into a league context banner and a 12-column grid system (4-5-3 distribution).
+
+## Sidebar Navigation
+
+Narrow sidebar (width 52 on desktop) using #050a14. Top area features a square 28px logo. Navigation items use 11px uppercase text with icons. Active state: #1a2a4a background and #d4af37 left-accent border. Bottom section contains a user profile card with a 32px square avatar and 9px bold metadata.
+
+## Control Header
+
+Slim 48px header in #050a14. Left side features 18px navigation icons and a breadcrumb trail using 11px font with #d4af37 highlighting current location. Right side features a 192px search bar with #111d35 background and a primary 'Continue' button (Gold #d4af37, heavy 900 weight text, play icon).
+
+## Context Banner
+
+A 96px high hero section with a linear gradient from #070d18 to #1a2a4a with a 20% gold tint on the right. Includes a large 64px square league logo, an H1 heading (20px black font, tracking-tighter), and a tab-bar navigation at the bottom using 10px black uppercase text and 2px gold bottom-borders for active states.
+
+## Tactical Analysis Column
+
+4-column width. Features a 'Tactical Board' card with a dark navy pitch background and white 5% opacity grid lines. Includes SVG tactical paths (dashed gold lines) and player markers (solid gold dots with 10px glow). Below, a 'Communications Hub' card with high-density list items (11px headers, 10px body) and a gold notification badge ('3 NEW').
+
+## Data Hub Column
+
+5-column width. Features a player performance profile with progress bars (4px height) in #d4af37 and green-500. Includes a 5x4 grid 'Heatmap' using colored cells with varying opacity based on frequency. Below, a dense results table with 9px headers and score chips (#1a2a4a background, 1px border).
+
+## League Standings Column
+
+3-column width. A compact table with 8px uppercase headers and 10px bold text. Includes 'Form' indicators as a row of 8px colored dots (green-500, red-500, slate-700). Includes a 'Tactical Insights' ticker section with 2px solid left borders in different colors for categorization.
+
+## System Footer
+
+Fixed 24px bar at the bottom with a solid Gold (#d4af37) background and Black (#050a14) text. Displays system metadata (database version, server load, current time) in 9px black uppercase text. Icons should be 14px high.
+
+# Special Components
+
+## Tactical Pitch Board
+
+A visualization tool for showing movements or data distributions on a field.
+
+Create a div with 'pitch-bg' class (gradient #1a2a4a to #111d35) overlaid with a 20px white grid at 5% opacity. Place 12px circular markers (#d4af37). Use an absolute-positioned SVG layer to draw lines with 'stroke-dasharray: 2 2' for movement paths. Add a 1px solid border #1e293b around the container.
+
+## Activity Heatmap Grid
+
+A 5x5 or 5x4 grid of small squares used to visualize intensity.
+
+Design a grid of 12x12px squares ('heat-cell') with 4px gaps. Color the squares using Gold (#d4af37) with varying opacity levels (10%, 40%, 70%, 100%). High-intensity cells (100% opacity) should have a 'shadow: 0 0 8px #d4af37' to simulate a glow effect.
+
+## FM-Style Data Progress Bar
+
+Ultra-thin progress indicators used for skill ratings or completion status.
+
+A container 4px high with background #1e293b. The filler should be #d4af37 (or #22c55e for success) with no border-radius for a technical, hard-edged look. Label the bar with 9px bold uppercase text positioned directly above it.
