@@ -12,11 +12,12 @@ const fs = require("fs");
 const path = require("path");
 
 try {
-  const dotenv = require("dotenv");
-  dotenv.config({ path: path.join(__dirname, "..", ".env"), quiet: true });
-  dotenv.config({ quiet: true });
+  require("dotenv").config({
+    path: path.resolve(__dirname, "..", ".env"),
+    quiet: true
+  });
 } catch (_) {
-  // dotenv is optional; scheduled/server environments can provide env vars.
+  // Run `npm --prefix server install`, or provide env vars through the host.
 }
 
 const MATCHES_FILE = path.join(__dirname, "matches.json");

@@ -42,6 +42,25 @@ Rules:
 
 `API_FOOTBALL_KEY` is not required for manual score updates.
 
+## Local Environment Loading
+
+`server/set-score.js` automatically loads:
+
+```text
+wc2026-claude/.env
+```
+
+It does not use a frontend config file or `server/.env`. Install the server
+dependency after cloning or changing `server/package.json`:
+
+```powershell
+npm --prefix server install
+```
+
+If `dotenv` is unavailable, variables supplied directly by PowerShell or the
+server/scheduler environment still work. GitHub Pages never reads the root
+`.env`.
+
 ## Dry Run First
 
 Run dry-run before every real write:

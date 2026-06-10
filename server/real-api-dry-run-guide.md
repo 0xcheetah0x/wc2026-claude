@@ -65,7 +65,24 @@ Frontend reminder:
 
 ## Local `.env` Example
 
-Create `.env` locally with real values only on your machine/server. The example below is placeholders only:
+The server scripts automatically load `.env` from the project root:
+
+```text
+wc2026-claude/.env
+```
+
+Install server dependencies once after cloning or after `server/package.json`
+changes:
+
+```powershell
+npm --prefix server install
+```
+
+If `dotenv` is unavailable, the scripts still accept variables supplied
+directly by PowerShell, CI, or the scheduler environment.
+
+Create the root `.env` locally with real values only on your machine/server.
+The example below is placeholders only:
 
 ```env
 API_FOOTBALL_KEY=your_api_football_key_here
@@ -90,6 +107,8 @@ Safety rules:
 - Never commit `.env`.
 - Never send `.env` to anyone.
 - Never paste real keys into docs, issues, commits, screenshots, or frontend config.
+- Do not create or rely on `server/.env`; the scripts use the project-root file.
+- GitHub Pages and the frontend do not read `.env`.
 
 ## Commands
 

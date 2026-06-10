@@ -5,21 +5,26 @@
  * Conservative server-side score updater draft.
  *
  * Defaults:
+ * - SCORE_PROVIDER=api-football
  * - DRY_RUN=1
- * - MOCK_FIXTURES=1 while dry-run is active unless explicitly set otherwise
+ * - API-Football mock fixtures remain enabled while dry-run is active unless
+ *   explicitly disabled
  *
- * This keeps validation from calling API-Football or writing to Supabase.
+ * football-data.org is currently supported for read-only dry-run validation.
  */
-
-try {
-  require("dotenv").config({ quiet: true });
-} catch (_) {
-  // dotenv is optional; scheduled hosts can provide real env vars directly.
-}
 
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+
+try {
+  require("dotenv").config({
+    path: path.resolve(__dirname, "..", ".env"),
+    quiet: true
+  });
+} catch (_) {
+  // Run `npm --prefix server install`, or provide env vars through the host.
+}
 
 const ISTANBUL_TZ = "Europe/Istanbul";
 const MATCHES_FILE = path.join(__dirname, "matches.json");
@@ -27,6 +32,10 @@ const FIXTURE_MAP_FILE = path.join(__dirname, "fixture-map.json");
 const BUDGET_FILE = path.join(__dirname, ".api-budget.json");
 const DEFAULT_DAILY_BUDGET = 100;
 const DEFAULT_RESERVE = 20;
+const API_FOOTBALL_PROVIDER = "api-football";
+const FOOTBALL_DATA_PROVIDER = "football-data";
+const FOOTBALL_DATA_API_BASE = "https://api.football-data.org";
+const PROVIDER_REQUEST_TIMEOUT_MS = 15000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 class ConfigError extends Error {
@@ -65,15 +74,22 @@ function parsePositiveInt(value, fallback) {
 
 function readConfig() {
   const dryRun = parseBool(process.env.DRY_RUN, true);
+  const scoreProvider = cleanEnv("SCORE_PROVIDER").toLowerCase() || API_FOOTBALL_PROVIDER;
 
   return {
+    scoreProvider,
     apiFootballKey: cleanEnv("API_FOOTBALL_KEY"),
+    footballDataToken: cleanEnv("FOOTBALL_DATA_TOKEN"),
+    footballDataCompetition: cleanEnv("FOOTBALL_DATA_COMPETITION") || "WC",
+    footballDataSeason: cleanEnv("FOOTBALL_DATA_SEASON") || "2026",
     supabaseUrl: cleanEnv("SUPABASE_URL"),
     supabaseServiceRoleKey: cleanEnv("SUPABASE_SERVICE_ROLE_KEY"),
     apiFootballLeagueId: cleanEnv("API_FOOTBALL_LEAGUE_ID"),
     apiFootballSeason: cleanEnv("API_FOOTBALL_SEASON"),
     dryRun,
-    mockFixtures: parseBool(process.env.MOCK_FIXTURES, dryRun),
+    mockFixtures:
+      scoreProvider === API_FOOTBALL_PROVIDER &&
+      parseBool(process.env.MOCK_FIXTURES, dryRun),
     discoverFixtures: parseBool(process.env.DISCOVER_FIXTURES, false),
     discoverLeagues: parseBool(process.env.DISCOVER_LEAGUES, false),
     leagueSearch: cleanEnv("LEAGUE_SEARCH"),
@@ -96,11 +112,26 @@ function readConfig() {
 }
 
 function validateConfig(config) {
+  if (![API_FOOTBALL_PROVIDER, FOOTBALL_DATA_PROVIDER].includes(config.scoreProvider)) {
+    throw new ConfigError(
+      `Unsupported SCORE_PROVIDER "${config.scoreProvider}". Use api-football or football-data.`
+    );
+  }
+
   if (config.matchDate && !DATE_RE.test(config.matchDate)) {
     throw new ConfigError("MATCH_DATE must use YYYY-MM-DD format.");
   }
 
-  if (!config.discoverLeagues && config.apiFootballLeagueId && !config.apiFootballSeason) {
+  if (config.discoverLeagues && config.scoreProvider !== API_FOOTBALL_PROVIDER) {
+    throw new ConfigError("League discovery is available only for SCORE_PROVIDER=api-football.");
+  }
+
+  if (
+    config.scoreProvider === API_FOOTBALL_PROVIDER &&
+    !config.discoverLeagues &&
+    config.apiFootballLeagueId &&
+    !config.apiFootballSeason
+  ) {
     throw new ConfigError("API_FOOTBALL_SEASON is required when API_FOOTBALL_LEAGUE_ID is set.");
   }
 
@@ -108,8 +139,36 @@ function validateConfig(config) {
     throw new ConfigError("Refusing to write mock fixtures. Set MOCK_FIXTURES=0 before real Supabase writes.");
   }
 
-  if (!config.mockFixtures && !config.apiFootballKey) {
+  if (
+    config.scoreProvider === API_FOOTBALL_PROVIDER &&
+    !config.mockFixtures &&
+    !config.apiFootballKey
+  ) {
     throw new ConfigError("Missing API_FOOTBALL_KEY for non-mock score fetch.");
+  }
+
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER && !config.footballDataToken) {
+    throw new ConfigError("Missing FOOTBALL_DATA_TOKEN for football-data score fetch.");
+  }
+
+  if (
+    config.scoreProvider === FOOTBALL_DATA_PROVIDER &&
+    !/^[A-Za-z0-9_-]+$/.test(config.footballDataCompetition)
+  ) {
+    throw new ConfigError("FOOTBALL_DATA_COMPETITION contains unsupported characters.");
+  }
+
+  if (
+    config.scoreProvider === FOOTBALL_DATA_PROVIDER &&
+    !/^\d{4}$/.test(config.footballDataSeason)
+  ) {
+    throw new ConfigError("FOOTBALL_DATA_SEASON must be a four-digit year.");
+  }
+
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER && !config.dryRun) {
+    throw new ConfigError(
+      "football-data Supabase writes are not enabled yet. Use DRY_RUN=1."
+    );
   }
 
   if (!config.discoverFixtures && !config.discoverLeagues && !config.dryRun) {
@@ -135,12 +194,16 @@ function printHelp() {
 WC2026 score updater
 
 Safe defaults:
+  SCORE_PROVIDER=api-football
   DRY_RUN=1
-  MOCK_FIXTURES=1
+  MOCK_FIXTURES=1 for API-Football dry-runs
 
 Examples:
   Mock dry-run, no API-Football calls, no Supabase writes:
     npm --prefix server run update:scores:mock
+
+  football-data.org dry-run, one read-only season request, no Supabase writes:
+    SCORE_PROVIDER=football-data DRY_RUN=1 node server/update-scores.js
 
   Future real provider dry-run, may consume API-Football quota, still no Supabase writes:
     DRY_RUN=1 MOCK_FIXTURES=0 MATCH_DATE=2026-06-11 node server/update-scores.js
@@ -158,9 +221,13 @@ Examples:
     DRY_RUN=0 MOCK_FIXTURES=0 MATCH_DATE=2026-06-11 node server/update-scores.js
 
 Server-only env vars:
+  SCORE_PROVIDER
   API_FOOTBALL_KEY
   API_FOOTBALL_LEAGUE_ID
   API_FOOTBALL_SEASON
+  FOOTBALL_DATA_TOKEN
+  FOOTBALL_DATA_COMPETITION
+  FOOTBALL_DATA_SEASON
   SUPABASE_URL
   SUPABASE_SERVICE_ROLE_KEY
   SCORE_UPDATE_BUDGET_DAILY
@@ -174,13 +241,18 @@ Server-only env vars:
   MATCH_DATE
   HELP
 
-Never place API_FOOTBALL_KEY or SUPABASE_SERVICE_ROLE_KEY in frontend config.
+Never place API_FOOTBALL_KEY, FOOTBALL_DATA_TOKEN, or
+SUPABASE_SERVICE_ROLE_KEY in frontend config.
 `.trim());
 }
 
 function redactSecrets(text, config = readConfig()) {
   let out = String(text || "");
-  const values = [config.apiFootballKey, config.supabaseServiceRoleKey].filter((v) => v && v.length >= 8);
+  const values = [
+    config.apiFootballKey,
+    config.footballDataToken,
+    config.supabaseServiceRoleKey
+  ].filter((v) => v && v.length >= 4);
   for (const secret of values) {
     out = out.split(secret).join("[redacted]");
   }
@@ -281,11 +353,22 @@ function clampInt(value, min, max, fallback = min) {
   return Math.min(max, Math.max(min, Math.trunc(n)));
 }
 
+function optionalClampedInt(value, min, max) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
 function mapStatus(short) {
   const code = String(short || "").toUpperCase();
-  if (["NS", "TBD"].includes(code)) return "upcoming";
-  if (["1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT"].includes(code)) return "live";
-  if (["FT", "AET", "PEN"].includes(code)) return "finished";
+  if (["NS", "TBD", "SCHEDULED", "TIMED"].includes(code)) return "upcoming";
+  if (
+    ["1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "IN_PLAY", "PAUSED"].includes(code)
+  ) {
+    return "live";
+  }
+  if (["FT", "AET", "PEN", "FINISHED", "AWARDED"].includes(code)) return "finished";
   return null;
 }
 
@@ -327,7 +410,13 @@ function normalizeFixtureMapEntries(fixtureMap) {
           away: value.away || value.a,
           homeAliases: value.homeAliases || [],
           awayAliases: value.awayAliases || [],
-          apiFixtureId: value.apiFixtureId ?? value.apiFootballFixtureId ?? value.fixtureId ?? value.fixture_id ?? null
+          apiFixtureId:
+            value.apiFixtureId ??
+            value.apiFootballFixtureId ??
+            value.fixtureId ??
+            value.fixture_id ??
+            null,
+          footballDataMatchId: value.footballDataMatchId ?? null
         };
       }
 
@@ -353,6 +442,13 @@ function dateCloseEnough(fixture, matchLike) {
   return Math.abs(apiDateMs - internalMs) <= maxDistanceMs;
 }
 
+function kickoffDifferenceMinutes(fixture, matchLike) {
+  const providerMs = fixtureDateMs(fixture);
+  const internalMs = matchDateMs(matchLike);
+  if (providerMs === null || internalMs === null) return null;
+  return Math.round(Math.abs(providerMs - internalMs) / (60 * 1000));
+}
+
 function aliasesMatch(providerName, aliases = []) {
   const normalized = normalizeTeamName(providerName);
   if (!normalized) return false;
@@ -369,14 +465,32 @@ function internalMatchForEntry(entry, matches) {
   return matches.find((m) => Number(m.id) === Number(entry.id)) || null;
 }
 
+function fixtureProvider(fixture) {
+  return fixture?._provider || API_FOOTBALL_PROVIDER;
+}
+
+function fixtureMapProviderId(entry, provider) {
+  return provider === FOOTBALL_DATA_PROVIDER
+    ? entry.footballDataMatchId
+    : entry.apiFixtureId;
+}
+
+function providerIdMappingLabel(provider) {
+  return provider === FOOTBALL_DATA_PROVIDER
+    ? "footballDataMatchId"
+    : "apiFixtureId";
+}
+
 function matchFromFixtureId(fixture, matches, entries) {
   const fixtureId = fixture?.fixture?.id;
   if (!fixtureId) return null;
   const id = String(fixtureId);
+  const provider = fixtureProvider(fixture);
 
   for (const entry of entries) {
-    if (entry.apiFixtureId === null || entry.apiFixtureId === undefined || entry.apiFixtureId === "") continue;
-    if (String(entry.apiFixtureId) === id) {
+    const providerId = fixtureMapProviderId(entry, provider);
+    if (providerId === null || providerId === undefined || providerId === "") continue;
+    if (String(providerId) === id) {
       const match = internalMatchForEntry(entry, matches);
       if (match && dateCloseEnough(fixture, entry.utc ? entry : match)) return match;
       return null;
@@ -402,6 +516,7 @@ function matchFromAliases(fixture, matches, entries) {
 
 function providerFixtureSummary(fixture) {
   return {
+    provider: fixtureProvider(fixture),
     providerFixtureId: fixture?.fixture?.id ?? null,
     providerHome: fixture?.teams?.home?.name || null,
     providerAway: fixture?.teams?.away?.name || null,
@@ -424,25 +539,38 @@ function candidateIds(matches) {
 function analyzeFixtureMapping(fixture, matches, fixtureMap = {}) {
   const entries = normalizeFixtureMapEntries(fixtureMap);
   const fixtureId = fixture?.fixture?.id;
+  const provider = fixtureProvider(fixture);
+  const idLabel = providerIdMappingLabel(provider);
 
   if (fixtureId !== null && fixtureId !== undefined && fixtureId !== "") {
     const idMatches = entries
-      .filter((entry) => entry.apiFixtureId !== null && entry.apiFixtureId !== undefined && entry.apiFixtureId !== "")
-      .filter((entry) => String(entry.apiFixtureId) === String(fixtureId))
+      .filter((entry) => {
+        const id = fixtureMapProviderId(entry, provider);
+        return id !== null && id !== undefined && id !== "";
+      })
+      .filter((entry) => String(fixtureMapProviderId(entry, provider)) === String(fixtureId))
       .map((entry) => ({ entry, match: internalMatchForEntry(entry, matches) }))
       .filter((item) => item.match);
 
     if (idMatches.length) {
       const close = idMatches.filter((item) => dateCloseEnough(fixture, item.entry.utc ? item.entry : item.match));
       if (close.length === 1) {
-        return { match: close[0].match, mappedBy: "apiFixtureId", ambiguous: false, candidates: [close[0].match] };
+        return {
+          match: close[0].match,
+          mappedBy: idLabel,
+          ambiguous: false,
+          candidates: [close[0].match]
+        };
       }
       return {
         match: null,
-        mappedBy: "apiFixtureId",
+        mappedBy: idLabel,
         ambiguous: close.length > 1,
         candidates: close.length ? close.map((item) => item.match) : idMatches.map((item) => item.match),
-        reason: close.length > 1 ? "Multiple fixture-map entries share this provider fixture id." : "Provider fixture id matched, but kickoff date was outside the safety window."
+        reason:
+          close.length > 1
+            ? "Multiple fixture-map entries share this provider match id."
+            : "Provider match id matched, but kickoff date was outside the safety window."
       };
     }
   }
@@ -511,14 +639,54 @@ function mapFixtureToInternalMatch(fixture, matches, fixtureMap = {}) {
 
 function normalizeFixtureScore(fixture, internalMatch) {
   const status = mapStatus(fixture?.fixture?.status?.short);
-  if (!status) return null;
+  if (!status) {
+    return { row: null, reason: "Unsupported provider status." };
+  }
+
+  if (fixtureProvider(fixture) === API_FOOTBALL_PROVIDER) {
+    return {
+      row: {
+        match_id: Number(internalMatch.id),
+        home_score: clampInt(fixture?.goals?.home, 0, 20, 0),
+        away_score: clampInt(fixture?.goals?.away, 0, 20, 0),
+        status,
+        minute: clampInt(fixture?.fixture?.status?.elapsed, 0, 130, 0)
+      },
+      reason: null
+    };
+  }
+
+  if (status === "upcoming") {
+    return {
+      row: null,
+      reason: "Upcoming fixture does not produce a score upsert."
+    };
+  }
+
+  const homeScore = optionalClampedInt(fixture?.goals?.home, 0, 20);
+  const awayScore = optionalClampedInt(fixture?.goals?.away, 0, 20);
+  if (homeScore === null || awayScore === null) {
+    return {
+      row: null,
+      reason: `${status === "live" ? "Live" : "Finished"} fixture is missing a full-time score.`
+    };
+  }
+
+  const providerMinute = optionalClampedInt(
+    fixture?.fixture?.status?.elapsed,
+    0,
+    130
+  );
 
   return {
-    match_id: Number(internalMatch.id),
-    home_score: clampInt(fixture?.goals?.home, 0, 20, 0),
-    away_score: clampInt(fixture?.goals?.away, 0, 20, 0),
-    status,
-    minute: clampInt(fixture?.fixture?.status?.elapsed, 0, 130, 0)
+    row: {
+      match_id: Number(internalMatch.id),
+      home_score: homeScore,
+      away_score: awayScore,
+      status,
+      minute: providerMinute === null && status === "finished" ? 90 : providerMinute
+    },
+    reason: null
   };
 }
 
@@ -549,13 +717,22 @@ function buildScorePlan(fixtures, matches, fixtureMap = {}) {
       continue;
     }
 
-    const row = normalizeFixtureScore(fixture, internalMatch);
+    report.mapped.push({
+      ...summary,
+      internalMatchId: Number(internalMatch.id),
+      internalUtc: internalMatch.utc || null,
+      kickoffDifferenceMinutes: kickoffDifferenceMinutes(fixture, internalMatch),
+      mappedBy: mapping.mappedBy
+    });
+
+    const normalized = normalizeFixtureScore(fixture, internalMatch);
+    const row = normalized.row;
     if (!row) {
       report.skipped.push({
         ...summary,
         internalMatchId: Number(internalMatch.id),
         mappedBy: mapping.mappedBy,
-        reason: "Unsupported provider status."
+        reason: normalized.reason
       });
       continue;
     }
@@ -576,17 +753,14 @@ function buildScorePlan(fixtures, matches, fixtureMap = {}) {
       away_score: row.away_score,
       status: row.status,
       minute: row.minute,
+      provider: summary.provider,
+      provider_match_id: summary.providerFixtureId,
       provider_fixture_id: summary.providerFixtureId,
       mapped_by: mapping.mappedBy
     };
 
     rowsByMatchId.set(row.match_id, row);
     previewByMatchId.set(row.match_id, preview);
-    report.mapped.push({
-      ...summary,
-      internalMatchId: row.match_id,
-      mappedBy: mapping.mappedBy
-    });
   }
 
   return {
@@ -694,6 +868,118 @@ function fetchApiFootballJson(apiPath, config) {
   });
 }
 
+function footballDataPath(config) {
+  const competition = encodeURIComponent(config.footballDataCompetition);
+  const season = encodeURIComponent(config.footballDataSeason);
+  return `/v4/competitions/${competition}/matches?season=${season}`;
+}
+
+function footballDataTeamName(team) {
+  return team?.name || team?.shortName || team?.tla || null;
+}
+
+function adaptFootballDataMatch(match, config) {
+  return {
+    _provider: FOOTBALL_DATA_PROVIDER,
+    fixture: {
+      id: match?.id ?? null,
+      date: match?.utcDate || null,
+      status: {
+        short: match?.status || null,
+        elapsed: match?.minute ?? null
+      }
+    },
+    teams: {
+      home: { name: footballDataTeamName(match?.homeTeam) },
+      away: { name: footballDataTeamName(match?.awayTeam) }
+    },
+    goals: {
+      home: match?.score?.fullTime?.home ?? null,
+      away: match?.score?.fullTime?.away ?? null
+    },
+    league: {
+      id: match?.competition?.id ?? 2000,
+      name: match?.competition?.name || "FIFA World Cup",
+      season: Number(config.footballDataSeason)
+    },
+    footballData: {
+      matchday: match?.matchday ?? null,
+      stage: match?.stage ?? null,
+      group: match?.group ?? null,
+      duration: match?.score?.duration ?? null,
+      regularTime: match?.score?.regularTime || null,
+      penalties: match?.score?.penalties || null
+    }
+  };
+}
+
+function providerErrorMessage(payload, fallback) {
+  if (payload && typeof payload === "object") {
+    const candidate = payload.message || payload.error || payload.errorCode;
+    if (candidate) return String(candidate).slice(0, 300);
+  }
+  return String(fallback || "Request failed.").slice(0, 300);
+}
+
+async function fetchFootballDataFixtures(config) {
+  const apiPath = footballDataPath(config);
+  reserveApiCall(apiPath, config);
+  log(`Fetching football-data.org path ${apiPath}.`);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PROVIDER_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${FOOTBALL_DATA_API_BASE}${apiPath}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-Auth-Token": config.footballDataToken
+      },
+      redirect: "follow",
+      signal: controller.signal
+    });
+
+    const text = await response.text();
+    let payload = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch (_) {
+        throw new Error("football-data.org returned invalid JSON.");
+      }
+    }
+
+    if (!response.ok) {
+      const message = providerErrorMessage(payload, response.statusText);
+      throw new Error(
+        `football-data.org request failed with status ${response.status}: ${message}`
+      );
+    }
+
+    const rawMatches = Array.isArray(payload?.matches) ? payload.matches : [];
+    const selected = config.matchDate
+      ? rawMatches.filter((match) => String(match?.utcDate || "").startsWith(config.matchDate))
+      : rawMatches;
+
+    return {
+      fixtures: selected.map((match) => adaptFootballDataMatch(match, config)),
+      apiPaths: [apiPath],
+      source: FOOTBALL_DATA_PROVIDER,
+      providerMatchesFetched: rawMatches.length
+    };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(
+        `football-data.org request timed out after ${PROVIDER_REQUEST_TIMEOUT_MS} ms.`
+      );
+    }
+    throw new Error(redactSecrets(error.message, config));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function leagueApiPaths(config) {
   const paths = [];
   const targetSeason = config.apiFootballSeason || "";
@@ -768,6 +1054,10 @@ async function fetchLeagues(config) {
 }
 
 async function fetchFixtures(config, matchesToCheck) {
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER) {
+    return fetchFootballDataFixtures(config);
+  }
+
   if (config.mockFixtures) {
     log("Using mock fixtures. No API-Football calls will be made.");
     return {
@@ -798,6 +1088,9 @@ function budgetLine(snapshot) {
 }
 
 function queryModeLabel(config) {
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER) {
+    return config.matchDate ? "season+local-date-filter" : "full-season";
+  }
   if (config.apiFootballLeagueId && config.matchDate) return "league+season+date";
   if (config.apiFootballLeagueId) return "league+season";
   if (config.matchDate) return "date";
@@ -813,6 +1106,14 @@ function selectedDateLabel(config, matchesToCheck) {
 }
 
 function zeroFixtureGuidance(config) {
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER) {
+    return [
+      "FOOTBALL_DATA_COMPETITION or FOOTBALL_DATA_SEASON may be incorrect",
+      "the account plan may not include this competition or season",
+      "the provider may have returned an empty season"
+    ];
+  }
+
   return [
     "fixtures not published by the provider yet",
     "wrong MATCH_DATE",
@@ -830,51 +1131,99 @@ function printZeroFixtureGuidance(config) {
   }
 }
 
+function mappingPreviewRow(item) {
+  return {
+    provider: item.provider,
+    provider_match_id: item.providerFixtureId,
+    kickoff_utc: item.fixtureUtc,
+    provider_home: item.providerHome,
+    provider_away: item.providerAway,
+    internal_match_id: item.internalMatchId,
+    kickoff_difference_minutes: item.kickoffDifferenceMinutes,
+    mapped_by: item.mappedBy
+  };
+}
+
+function printTargetMapping(report, internalMatchId, label) {
+  const row = report.mapped.find(
+    (item) => Number(item.internalMatchId) === Number(internalMatchId)
+  );
+  log(`${label}: ${row ? `mapped to internal match ${internalMatchId}` : "not mapped"}`);
+  if (row) {
+    console.log(JSON.stringify(mappingPreviewRow(row), null, 2));
+  }
+}
+
+function printLimitedDetails(label, items) {
+  if (!items.length) {
+    log(`${label}: none`);
+    return;
+  }
+
+  warn(`${label} (first ${Math.min(10, items.length)} of ${items.length}):`);
+  console.log(JSON.stringify(items.slice(0, 10), null, 2));
+}
+
 function printScoreReport(context) {
   const { config, matchesToCheck, fetchResult, plan, budgetBefore, budgetAfter } = context;
   const report = plan.report;
+  const kickoffDifferences = report.mapped.filter(
+    (item) =>
+      Number.isFinite(item.kickoffDifferenceMinutes) &&
+      item.kickoffDifferenceMinutes > 0
+  );
+  const kickoffDiscrepancies = report.mapped.filter(
+    (item) =>
+      Number.isFinite(item.kickoffDifferenceMinutes) &&
+      item.kickoffDifferenceMinutes > 60
+  );
 
   log("--- Score updater report ---");
+  log(`Score provider: ${config.scoreProvider}`);
   log(`Query mode: ${queryModeLabel(config)}`);
   log(`Selected match date: ${selectedDateLabel(config, matchesToCheck)}`);
-  log(`API-Football league id: ${config.apiFootballLeagueId || "not set"}`);
-  log(`API-Football season: ${config.apiFootballLeagueId ? config.apiFootballSeason : "not set"}`);
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER) {
+    log(`football-data competition: ${config.footballDataCompetition}`);
+    log(`football-data season: ${config.footballDataSeason}`);
+  } else {
+    log(`API-Football league id: ${config.apiFootballLeagueId || "not set"}`);
+    log(`API-Football season: ${config.apiFootballLeagueId ? config.apiFootballSeason : "not set"}`);
+  }
   log(`Provider source: ${fetchResult.source}`);
   log(`API paths: ${fetchResult.apiPaths.length ? fetchResult.apiPaths.join(", ") : "none"}`);
+  if (Number.isInteger(fetchResult.providerMatchesFetched)) {
+    log(`Provider season matches fetched count: ${fetchResult.providerMatchesFetched}`);
+  }
   log(`Provider fixtures fetched count: ${report.providerFixturesFetched}`);
   log(`Mapped fixtures count: ${report.mapped.length}`);
   log(`Unmapped fixtures count: ${report.unmapped.length}`);
   log(`Ambiguous fixtures count: ${report.ambiguous.length}`);
+  log(`Kickoff differences over 0 minutes: ${kickoffDifferences.length}`);
+  log(`Kickoff discrepancies over 60 minutes: ${kickoffDiscrepancies.length}`);
   log(`Skipped fixtures count: ${report.skipped.length}`);
   log(`Planned Supabase upserts: ${plan.rows.length}`);
-  log(`API budget before: ${budgetLine(budgetBefore)}`);
-  log(`API budget after: ${budgetLine(budgetAfter)}${config.mockFixtures ? " (mock mode did not touch budget file)" : ""}`);
+  log(`Provider request budget before: ${budgetLine(budgetBefore)}`);
+  log(`Provider request budget after: ${budgetLine(budgetAfter)}${config.mockFixtures ? " (mock mode did not touch budget file)" : ""}`);
   log(`Supabase writes: ${config.dryRun ? "skipped because DRY_RUN=1" : "enabled"}`);
 
   if (report.providerFixturesFetched === 0 && !config.mockFixtures) {
     printZeroFixtureGuidance(config);
   }
 
-  if (report.unmapped.length) {
-    warn("Unmapped fixture details:");
-    console.log(JSON.stringify(report.unmapped, null, 2));
+  if (report.mapped.length) {
+    log(`First ${Math.min(10, report.mapped.length)} mapping rows:`);
+    console.table(report.mapped.slice(0, 10).map(mappingPreviewRow));
   } else {
-    log("Unmapped fixture details: none");
+    log("Mapping rows: none");
   }
 
-  if (report.ambiguous.length) {
-    warn("Ambiguous fixture details:");
-    console.log(JSON.stringify(report.ambiguous, null, 2));
-  } else {
-    log("Ambiguous fixture details: none");
-  }
-
-  if (report.skipped.length) {
-    warn("Skipped fixture details:");
-    console.log(JSON.stringify(report.skipped, null, 2));
-  } else {
-    log("Skipped fixture details: none");
-  }
+  printTargetMapping(report, 1, "Mexico vs South Africa mapping");
+  printTargetMapping(report, 2, "South Korea vs Czechia mapping");
+  printLimitedDetails("Kickoff difference details", kickoffDifferences);
+  printLimitedDetails("Kickoff discrepancy details", kickoffDiscrepancies);
+  printLimitedDetails("Unmapped fixture details", report.unmapped);
+  printLimitedDetails("Ambiguous fixture details", report.ambiguous);
+  printLimitedDetails("Skipped fixture details", report.skipped);
 
   if (plan.previewRows.length) {
     log("Planned Supabase upsert preview:");
@@ -887,6 +1236,8 @@ function printScoreReport(context) {
 function discoveryRow(fixture, mapping) {
   const summary = providerFixtureSummary(fixture);
   return {
+    provider: summary.provider,
+    provider_match_id: summary.providerFixtureId,
     provider_fixture_id: summary.providerFixtureId,
     provider_home: summary.providerHome,
     provider_away: summary.providerAway,
@@ -911,25 +1262,31 @@ function printDiscoveryReport(context) {
 
   log("--- Fixture discovery report ---");
   log("Discovery mode: Supabase writes are disabled regardless of DRY_RUN.");
+  log(`Score provider: ${config.scoreProvider}`);
   log(`Query mode: ${queryModeLabel(config)}`);
   log(`Selected match date: ${selectedDateLabel(config, matchesToCheck)}`);
-  log(`API-Football league id: ${config.apiFootballLeagueId || "not set"}`);
-  log(`API-Football season: ${config.apiFootballLeagueId ? config.apiFootballSeason : "not set"}`);
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER) {
+    log(`football-data competition: ${config.footballDataCompetition}`);
+    log(`football-data season: ${config.footballDataSeason}`);
+  } else {
+    log(`API-Football league id: ${config.apiFootballLeagueId || "not set"}`);
+    log(`API-Football season: ${config.apiFootballLeagueId ? config.apiFootballSeason : "not set"}`);
+  }
   log(`API paths: ${fetchResult.apiPaths.length ? fetchResult.apiPaths.join(", ") : "none"}`);
   log(`Fixtures fetched count: ${rows.length}`);
   log(`Discovery mapped fixtures count: ${mappedCount}`);
   log(`Discovery unmapped fixtures count: ${unmappedCount}`);
   log(`Discovery ambiguous fixtures count: ${ambiguousCount}`);
-  log(`API budget before: ${budgetLine(budgetBefore)}`);
-  log(`API budget after: ${budgetLine(budgetAfter)}${config.mockFixtures ? " (mock mode did not touch budget file)" : ""}`);
+  log(`Provider request budget before: ${budgetLine(budgetBefore)}`);
+  log(`Provider request budget after: ${budgetLine(budgetAfter)}${config.mockFixtures ? " (mock mode did not touch budget file)" : ""}`);
 
   if (!rows.length && !config.mockFixtures) {
     printZeroFixtureGuidance(config);
   }
 
   if (rows.length) {
-    log("Provider fixture discovery rows:");
-    console.table(rows);
+    log(`Provider fixture discovery rows (first ${Math.min(10, rows.length)} of ${rows.length}):`);
+    console.table(rows.slice(0, 10));
   } else {
     log("Provider fixture discovery rows: none");
   }
@@ -1074,7 +1431,9 @@ async function main() {
   const fixtureMap = loadFixtureMap();
   const budgetBefore = budgetSnapshot(config);
 
-  log(`Mode: ${config.dryRun ? "dry-run" : "write"}. Mock fixtures: ${config.mockFixtures ? "on" : "off"}.`);
+  log(
+    `Provider: ${config.scoreProvider}. Mode: ${config.dryRun ? "dry-run" : "write"}. Mock fixtures: ${config.mockFixtures ? "on" : "off"}.`
+  );
   log(`Loaded ${matches.length} internal match(es); selected ${matchesToCheck.length} for this run.`);
 
   let fetchResult;
@@ -1118,10 +1477,14 @@ if (require.main === module) {
 }
 
 module.exports = {
+  adaptFootballDataMatch,
   analyzeFixtureMapping,
   buildScorePlan,
   buildScoreRows,
+  fetchFixtures,
   handleCliError,
+  loadFixtureMap,
+  loadInternalMatches,
   main,
   mapFixtureToInternalMatch,
   mapStatus,

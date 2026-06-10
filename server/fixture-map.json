@@ -12,7 +12,8 @@
       "Güney Afrika",
       "South Africa"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537327
   },
   {
     "id": 2,
@@ -30,7 +31,8 @@
       "Czech Republic",
       "Czechia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537328
   },
   {
     "id": 3,
@@ -47,7 +49,8 @@
       "Bosnia-Herzegovina",
       "Bosnia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537333
   },
   {
     "id": 4,
@@ -63,11 +66,12 @@
     "awayAliases": [
       "Paraguay"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537345
   },
   {
     "id": 5,
-    "utc": "2026-06-13T04:00:00Z",
+    "utc": "2026-06-14T04:00:00Z",
     "home": "Avustralya",
     "away": "Türkiye",
     "homeAliases": [
@@ -79,7 +83,8 @@
       "Turkey",
       "Turkiye"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537346
   },
   {
     "id": 6,
@@ -94,7 +99,8 @@
       "İsviçre",
       "Switzerland"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537334
   },
   {
     "id": 7,
@@ -109,7 +115,8 @@
       "Fas",
       "Morocco"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537339
   },
   {
     "id": 8,
@@ -123,7 +130,8 @@
       "İskoçya",
       "Scotland"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537340
   },
   {
     "id": 9,
@@ -138,7 +146,8 @@
       "Curaçao",
       "Curacao"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537351
   },
   {
     "id": 10,
@@ -154,7 +163,8 @@
       "Japonya",
       "Japan"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537357
   },
   {
     "id": 11,
@@ -171,7 +181,8 @@
       "Ekvador",
       "Ecuador"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537352
   },
   {
     "id": 12,
@@ -186,7 +197,8 @@
       "Tunus",
       "Tunisia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537358
   },
   {
     "id": 13,
@@ -200,9 +212,11 @@
     "awayAliases": [
       "Yeşil Burun A.",
       "Cape Verde",
+      "Cape Verde Islands",
       "Cabo Verde"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537369
   },
   {
     "id": 14,
@@ -217,7 +231,8 @@
       "Mısır",
       "Egypt"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537363
   },
   {
     "id": 15,
@@ -231,7 +246,8 @@
     "awayAliases": [
       "Uruguay"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537370
   },
   {
     "id": 16,
@@ -247,7 +263,8 @@
       "Yeni Zelanda",
       "New Zealand"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537364
   },
   {
     "id": 17,
@@ -261,7 +278,8 @@
     "awayAliases": [
       "Senegal"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537391
   },
   {
     "id": 18,
@@ -276,7 +294,8 @@
       "Norveç",
       "Norway"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537392
   },
   {
     "id": 19,
@@ -291,11 +310,12 @@
       "Cezayir",
       "Algeria"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537397
   },
   {
     "id": 20,
-    "utc": "2026-06-16T07:00:00Z",
+    "utc": "2026-06-17T04:00:00Z",
     "home": "Avusturya",
     "away": "Ürdün",
     "homeAliases": [
@@ -306,7 +326,8 @@
       "Ürdün",
       "Jordan"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537398
   },
   {
     "id": 21,
@@ -325,7 +346,8 @@
       "Democratic Republic of Congo",
       "Congo Kinshasa"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537403
   },
   {
     "id": 22,
@@ -340,7 +362,8 @@
       "Hırvatistan",
       "Croatia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537409
   },
   {
     "id": 23,
@@ -354,7 +377,8 @@
     "awayAliases": [
       "Panama"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537410
   },
   {
     "id": 24,
@@ -369,7 +393,8 @@
       "Kolombiya",
       "Colombia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537404
   },
   {
     "id": 25,
@@ -385,7 +410,8 @@
       "Güney Afrika",
       "South Africa"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537329
   },
   {
     "id": 26,
@@ -402,7 +428,8 @@
       "Bosnia-Herzegovina",
       "Bosnia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537335
   },
   {
     "id": 27,
@@ -417,7 +444,8 @@
       "Katar",
       "Qatar"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537336
   },
   {
     "id": 28,
@@ -434,11 +462,12 @@
       "Korea Republic",
       "Republic of Korea"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537330
   },
   {
     "id": 29,
-    "utc": "2026-06-19T04:00:00Z",
+    "utc": "2026-06-20T03:00:00Z",
     "home": "Türkiye",
     "away": "Paraguay",
     "homeAliases": [
@@ -449,7 +478,8 @@
     "awayAliases": [
       "Paraguay"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537347
   },
   {
     "id": 30,
@@ -466,7 +496,8 @@
       "Avustralya",
       "Australia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537348
   },
   {
     "id": 31,
@@ -481,11 +512,12 @@
       "Fas",
       "Morocco"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537342
   },
   {
     "id": 32,
-    "utc": "2026-06-20T01:00:00Z",
+    "utc": "2026-06-20T00:30:00Z",
     "home": "Brezilya",
     "away": "Haiti",
     "homeAliases": [
@@ -495,11 +527,12 @@
     "awayAliases": [
       "Haiti"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537341
   },
   {
     "id": 33,
-    "utc": "2026-06-20T04:00:00Z",
+    "utc": "2026-06-21T04:00:00Z",
     "home": "Tunus",
     "away": "Japonya",
     "homeAliases": [
@@ -510,7 +543,8 @@
       "Japonya",
       "Japan"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537360
   },
   {
     "id": 34,
@@ -526,7 +560,8 @@
       "İsveç",
       "Sweden"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537359
   },
   {
     "id": 35,
@@ -543,7 +578,8 @@
       "Cote d'Ivoire",
       "Côte d'Ivoire"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537353
   },
   {
     "id": 36,
@@ -558,7 +594,8 @@
       "Curaçao",
       "Curacao"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537354
   },
   {
     "id": 37,
@@ -573,7 +610,8 @@
       "Suudi Arabistan",
       "Saudi Arabia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537371
   },
   {
     "id": 38,
@@ -589,7 +627,8 @@
       "Iran",
       "IR Iran"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537365
   },
   {
     "id": 39,
@@ -602,9 +641,11 @@
     "awayAliases": [
       "Yeşil Burun A.",
       "Cape Verde",
+      "Cape Verde Islands",
       "Cabo Verde"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537372
   },
   {
     "id": 40,
@@ -619,7 +660,8 @@
       "Mısır",
       "Egypt"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537366
   },
   {
     "id": 41,
@@ -634,7 +676,8 @@
       "Avusturya",
       "Austria"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537399
   },
   {
     "id": 42,
@@ -649,7 +692,8 @@
       "Irak",
       "Iraq"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537393
   },
   {
     "id": 43,
@@ -663,7 +707,8 @@
     "awayAliases": [
       "Senegal"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537394
   },
   {
     "id": 44,
@@ -678,7 +723,8 @@
       "Cezayir",
       "Algeria"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537400
   },
   {
     "id": 45,
@@ -693,7 +739,8 @@
       "Özbekistan",
       "Uzbekistan"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537405
   },
   {
     "id": 46,
@@ -708,7 +755,8 @@
       "Gana",
       "Ghana"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537411
   },
   {
     "id": 47,
@@ -722,7 +770,8 @@
       "Hırvatistan",
       "Croatia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537412
   },
   {
     "id": 48,
@@ -741,7 +790,8 @@
       "Democratic Republic of Congo",
       "Congo Kinshasa"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537406
   },
   {
     "id": 49,
@@ -756,7 +806,8 @@
       "Kanada",
       "Canada"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537337
   },
   {
     "id": 50,
@@ -773,7 +824,8 @@
       "Katar",
       "Qatar"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537338
   },
   {
     "id": 51,
@@ -788,7 +840,8 @@
       "Brezilya",
       "Brazil"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537343
   },
   {
     "id": 52,
@@ -802,7 +855,8 @@
     "awayAliases": [
       "Haiti"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537344
   },
   {
     "id": 53,
@@ -818,7 +872,8 @@
       "Meksika",
       "Mexico"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537331
   },
   {
     "id": 54,
@@ -835,7 +890,8 @@
       "Korea Republic",
       "Republic of Korea"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537332
   },
   {
     "id": 55,
@@ -852,7 +908,8 @@
       "Cote d'Ivoire",
       "Côte d'Ivoire"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537356
   },
   {
     "id": 56,
@@ -867,7 +924,8 @@
       "Almanya",
       "Germany"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537355
   },
   {
     "id": 57,
@@ -882,7 +940,8 @@
       "İsveç",
       "Sweden"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537362
   },
   {
     "id": 58,
@@ -898,7 +957,8 @@
       "Netherlands",
       "Holland"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537361
   },
   {
     "id": 59,
@@ -916,7 +976,8 @@
       "United States",
       "United States of America"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537349
   },
   {
     "id": 60,
@@ -930,7 +991,8 @@
       "Avustralya",
       "Australia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537350
   },
   {
     "id": 61,
@@ -945,7 +1007,8 @@
       "Fransa",
       "France"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537395
   },
   {
     "id": 62,
@@ -959,7 +1022,8 @@
       "Irak",
       "Iraq"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537396
   },
   {
     "id": 63,
@@ -969,13 +1033,15 @@
     "homeAliases": [
       "Yeşil Burun A.",
       "Cape Verde",
+      "Cape Verde Islands",
       "Cabo Verde"
     ],
     "awayAliases": [
       "Suudi Arabistan",
       "Saudi Arabia"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537374
   },
   {
     "id": 64,
@@ -989,7 +1055,8 @@
       "İspanya",
       "Spain"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537373
   },
   {
     "id": 65,
@@ -1005,7 +1072,8 @@
       "Iran",
       "IR Iran"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537368
   },
   {
     "id": 66,
@@ -1020,7 +1088,8 @@
       "Belçika",
       "Belgium"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537367
   },
   {
     "id": 67,
@@ -1034,7 +1103,8 @@
       "İngiltere",
       "England"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537413
   },
   {
     "id": 68,
@@ -1049,7 +1119,8 @@
       "Gana",
       "Ghana"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537414
   },
   {
     "id": 69,
@@ -1064,7 +1135,8 @@
       "Portekiz",
       "Portugal"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537407
   },
   {
     "id": 70,
@@ -1083,7 +1155,8 @@
       "Özbekistan",
       "Uzbekistan"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537408
   },
   {
     "id": 71,
@@ -1098,7 +1171,8 @@
       "Avusturya",
       "Austria"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537402
   },
   {
     "id": 72,
@@ -1113,6 +1187,7 @@
       "Arjantin",
       "Argentina"
     ],
-    "apiFixtureId": null
+    "apiFixtureId": null,
+    "footballDataMatchId": 537401
   }
 ]

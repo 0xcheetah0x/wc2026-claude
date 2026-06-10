@@ -2,12 +2,17 @@
   "name": "wc2026-live-feed",
   "version": "1.0.0",
   "private": true,
-  "description": "Live score proxy using API-Football with event tracking",
+  "description": "Server-side World Cup score provider tools",
   "main": "live-server.js",
   "scripts": {
     "start": "node live-server.js",
     "set-score": "node set-score.js",
-    "update:scores:mock": "node -e \"process.env.DRY_RUN='1';process.env.MOCK_FIXTURES='1';const u=require('./update-scores');u.main().catch(u.handleCliError)\""
+    "check:football-data": "node check-football-data.js",
+    "update:scores:football-data:dry-run": "node -e \"process.env.SCORE_PROVIDER='football-data';process.env.DRY_RUN='1';const u=require('./update-scores');delete process.env.MATCH_DATE;u.main().catch(u.handleCliError)\"",
+    "update:scores:mock": "node -e \"process.env.SCORE_PROVIDER='api-football';process.env.DRY_RUN='1';process.env.MOCK_FIXTURES='1';const u=require('./update-scores');u.main().catch(u.handleCliError)\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
   },
   "engines": {
     "node": ">=18"

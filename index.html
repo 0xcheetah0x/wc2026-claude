@@ -1560,6 +1560,14 @@ body{
   font-size:10px;
   letter-spacing:.04em;
 }
+.home-fm button.pred-feed-user-tag{
+  all:unset;
+  cursor:pointer;
+  color:var(--or);
+  font-family:var(--f-mono);
+  font-size:10px;
+  letter-spacing:.04em;
+}
 
 .home-fm .standings-table{
   margin-top:8px;
@@ -3331,7 +3339,7 @@ let MATCHES=[
 {id:2,grp:'A',h:'Güney Kore',a:'Çekya',utc:'2026-06-12T02:00:00Z',city:'Guadalajara'},
 {id:3,grp:'B',h:'Kanada',a:'Bosna Hersek',utc:'2026-06-12T19:00:00Z',city:'Toronto'},
 {id:4,grp:'D',h:'ABD',a:'Paraguay',utc:'2026-06-13T01:00:00Z',city:'Los Angeles'},
-{id:5,grp:'D',h:'Avustralya',a:'Türkiye',utc:'2026-06-13T04:00:00Z',city:'Vancouver'},
+{id:5,grp:'D',h:'Avustralya',a:'Türkiye',utc:'2026-06-14T04:00:00Z',city:'Vancouver'},
 {id:6,grp:'B',h:'Katar',a:'İsviçre',utc:'2026-06-13T19:00:00Z',city:'San Francisco'},
 {id:7,grp:'C',h:'Brezilya',a:'Fas',utc:'2026-06-13T22:00:00Z',city:'New Jersey'},
 {id:8,grp:'C',h:'Haiti',a:'İskoçya',utc:'2026-06-14T01:00:00Z',city:'Boston'},
@@ -3346,7 +3354,7 @@ let MATCHES=[
 {id:17,grp:'I',h:'Fransa',a:'Senegal',utc:'2026-06-16T19:00:00Z',city:'New Jersey'},
 {id:18,grp:'I',h:'Irak',a:'Norveç',utc:'2026-06-16T22:00:00Z',city:'Boston'},
 {id:19,grp:'J',h:'Arjantin',a:'Cezayir',utc:'2026-06-17T01:00:00Z',city:'Kansas City'},
-{id:20,grp:'J',h:'Avusturya',a:'Ürdün',utc:'2026-06-16T07:00:00Z',city:'San Francisco'},
+{id:20,grp:'J',h:'Avusturya',a:'Ürdün',utc:'2026-06-17T04:00:00Z',city:'San Francisco'},
 {id:21,grp:'K',h:'Portekiz',a:'Kongo',utc:'2026-06-17T17:00:00Z',city:'Houston'},
 {id:22,grp:'L',h:'İngiltere',a:'Hırvatistan',utc:'2026-06-17T20:00:00Z',city:'Dallas'},
 {id:23,grp:'L',h:'Gana',a:'Panama',utc:'2026-06-17T23:00:00Z',city:'Toronto'},
@@ -3355,11 +3363,11 @@ let MATCHES=[
 {id:26,grp:'B',h:'İsviçre',a:'Bosna Hersek',utc:'2026-06-18T19:00:00Z',city:'Los Angeles'},
 {id:27,grp:'B',h:'Kanada',a:'Katar',utc:'2026-06-18T22:00:00Z',city:'Vancouver'},
 {id:28,grp:'A',h:'Meksika',a:'Güney Kore',utc:'2026-06-19T01:00:00Z',city:'Guadalajara'},
-{id:29,grp:'D',h:'Türkiye',a:'Paraguay',utc:'2026-06-19T04:00:00Z',city:'San Francisco'},
+{id:29,grp:'D',h:'Türkiye',a:'Paraguay',utc:'2026-06-20T03:00:00Z',city:'San Francisco'},
 {id:30,grp:'D',h:'ABD',a:'Avustralya',utc:'2026-06-19T19:00:00Z',city:'Seattle'},
 {id:31,grp:'C',h:'İskoçya',a:'Fas',utc:'2026-06-19T22:00:00Z',city:'Boston'},
-{id:32,grp:'C',h:'Brezilya',a:'Haiti',utc:'2026-06-20T01:00:00Z',city:'Philadelphia'},
-{id:33,grp:'F',h:'Tunus',a:'Japonya',utc:'2026-06-20T04:00:00Z',city:'Monterrey'},
+{id:32,grp:'C',h:'Brezilya',a:'Haiti',utc:'2026-06-20T00:30:00Z',city:'Philadelphia'},
+{id:33,grp:'F',h:'Tunus',a:'Japonya',utc:'2026-06-21T04:00:00Z',city:'Monterrey'},
 {id:34,grp:'F',h:'Hollanda',a:'İsveç',utc:'2026-06-20T17:00:00Z',city:'Houston'},
 {id:35,grp:'E',h:'Almanya',a:'Fildişi Sah.',utc:'2026-06-20T20:00:00Z',city:'Toronto'},
 {id:36,grp:'E',h:'Ekvador',a:'Curaçao',utc:'2026-06-21T00:00:00Z',city:'Kansas City'},
@@ -3577,6 +3585,85 @@ const productionLeaderboardAdapter={
 };
 
 const leaderboardAdapter=isDemoMode()?demoLeaderboardAdapter:productionLeaderboardAdapter;
+
+const normalizeUserLookupKey=v=>String(v||'').trim().toLowerCase();
+const formatProfileAverage=v=>{
+  const n=Number(v)||0;
+  return Number.isInteger(n)?n:Number(n.toFixed(1));
+};
+
+function predictionsRowsToMap(rows){
+  return (Array.isArray(rows)?rows:[]).reduce((acc,row)=>{
+    if(row.match_id==null) return acc;
+    acc[String(row.match_id)]=mapSupabasePrediction(row);
+    return acc;
+  },{});
+}
+
+function calculateProfileScoreFromPredictions(preds,scores,tournamentId=USER_SCORE_TOURNAMENT_ID){
+  let total=0;
+  MATCHES.forEach(m=>{
+    const sc=scores[m.id];
+    if(!isFinalScoreForUserProfile(sc)) return;
+    const pred=preds[String(m.id)]||preds[m.id];
+    const snap=buildMatchEventsSnapshot(sc);
+    const result=calculateUserScore({ ...snap, tournamentId, matchId:m.id }, pred);
+    total+=Number(result.delta)||0;
+  });
+  return Math.round(total*100)/100;
+}
+
+function calculateDayPointsFromPredictions(preds,scores,dayKey){
+  if(!dayKey) return 0;
+  return MATCHES
+    .filter(m=>fmtDateKey(m.utc)===dayKey)
+    .reduce((sum,m)=>{
+      const pred=preds[String(m.id)]||preds[m.id];
+      const sc=scores[m.id];
+      if(!pred||!sc||typeof sc.h!=='number'||typeof sc.a!=='number') return sum;
+      return sum+ruleMatchPoints(m,pred,sc);
+    },0);
+}
+
+async function loadSupabasePublicUserProfile(username,{scores={},rankingDayKey=null,leaderboardRows=[]}={}){
+  const key=normalizeUserLookupKey(username);
+  if(!key) return null;
+  const {session}=await requireSupabaseUser();
+  const profileRows=await supabaseFetch(`/rest/v1/profiles?username=eq.${encodeURIComponent(key)}&select=id,username,display_name,avatar_id`,{token:session.access_token});
+  const profile=Array.isArray(profileRows)?profileRows[0]||null:null;
+  if(!profile) return null;
+
+  let lbRow=(leaderboardRows||[]).find(row=>normalizeUserLookupKey(row.username)===key)||null;
+  if(!lbRow){
+    const lbRows=await supabaseFetch(`/rest/v1/leaderboard?username=eq.${encodeURIComponent(key)}&select=user_id,username,display_name,total_points,exact_scores,correct_outcomes,scored_matches`,{token:session.access_token});
+    lbRow=Array.isArray(lbRows)&&lbRows[0]?mapSupabaseLeaderboardRow(lbRows[0]):null;
+  }
+
+  let publicPreds={};
+  try{
+    const predRows=await supabaseFetch(`/rest/v1/predictions?user_id=eq.${encodeURIComponent(profile.id)}&select=match_id,home_score,away_score,created_at,updated_at&order=match_id.asc`,{token:session.access_token});
+    publicPreds=predictionsRowsToMap(predRows);
+  }catch(err){
+    console.warn('Supabase public profile predictions load failed:',safeSupabaseError(err));
+  }
+
+  const avg=lbRow?.avg!=null?lbRow.avg:(lbRow?.played?Number(lbRow.totalPoints||0)/Number(lbRow.played||1):0);
+  return{
+    id:profile.id,
+    userId:profile.id,
+    username:normalizeUserLookupKey(profile.username),
+    displayName:profile.display_name||profile.username||key,
+    avatarId:profile.avatar_id||'',
+    totalPoints:lbRow?.totalPoints||0,
+    st:lbRow?.st||0,
+    tt:lbRow?.tt||0,
+    avg,
+    cp:formatProfileAverage(avg),
+    dayPts:calculateDayPointsFromPredictions(publicPreds,scores,rankingDayKey),
+    userScore:calculateProfileScoreFromPredictions(publicPreds,scores),
+    role:'user'
+  };
+}
 async function fetchLiveScoresOverlay(base){
   const baseUrl=(typeof window!=='undefined'&&window.WC2026_LIVE_API)||'http://127.0.0.1:8787';
   try{
@@ -4097,6 +4184,7 @@ function HomeScreen({currentUser,scores,liveSync}){
   const [selectedMatchId,setSelectedMatchId]=useState(null);
   const [selectedMatchdayKey,setSelectedMatchdayKey]=useState(null);
   const [selectedUserKey,setSelectedUserKey]=useState(null);
+  const [selectedPublicUser,setSelectedPublicUser]=useState(null);
   useEffect(()=>{const id=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(id)},[]);
 
   const users=usersAdapter.getAll();
@@ -4126,6 +4214,12 @@ function HomeScreen({currentUser,scores,liveSync}){
     return()=>{cancelled=true};
   },[scores,liveSync?.last,currentUser.username]);
   const lb=isProductionMode()?productionLb:demoLb;
+  const openUserProfile=useCallback(username=>{
+    const key=normalizeUserLookupKey(username);
+    if(!key) return;
+    setSelectedUserKey(key);
+    setSelectedPublicUser(null);
+  },[]);
 
   const matchdayRows=useMemo(()=>{
     const activeDay=[...live,...today.filter(m=>m.status!=='live')];
@@ -4180,6 +4274,26 @@ function HomeScreen({currentUser,scores,liveSync}){
     return enriched.find(m=>m.id===selectedMatchId)||null;
   },[selectedMatchId,enriched]);
 
+  useEffect(()=>{
+    if(!selectedUserKey||!isProductionMode()){
+      setSelectedPublicUser(null);
+      return;
+    }
+    let cancelled=false;
+    (async()=>{
+      try{
+        const publicUser=await loadSupabasePublicUserProfile(selectedUserKey,{scores,rankingDayKey,leaderboardRows:lb});
+        if(!cancelled) setSelectedPublicUser(publicUser);
+      }catch(err){
+        if(!cancelled){
+          console.warn('Supabase public profile load failed:',safeSupabaseError(err));
+          setSelectedPublicUser(null);
+        }
+      }
+    })();
+    return()=>{cancelled=true};
+  },[selectedUserKey,scores,rankingDayKey,lb]);
+
   const revealedPredFeed=useMemo(()=>{
     const nowMs=now.getTime();
     const rows=[];
@@ -4211,19 +4325,26 @@ function HomeScreen({currentUser,scores,liveSync}){
 
   const selectedUser=useMemo(()=>{
     if(!selectedUserKey) return null;
-    const base=users[selectedUserKey];
-    if(!base) return null;
     const lbRow=lb.find(x=>x.username===selectedUserKey)||{};
     const dayRow=topDailyRanking.find(x=>x.username===selectedUserKey)||{};
+    const base=users[selectedUserKey]||selectedPublicUser||lbRow;
+    if(!base||!base.username) return null;
+    const avg=selectedPublicUser?.avg??lbRow.avg??base.avg??0;
     return{
       ...base,
-      totalPoints:lbRow.totalPoints||0,
-      st:lbRow.st||0,
-      tt:lbRow.tt||0,
-      cp:lbRow.potentialPts||0,
-      dayPts:dayRow.dayPts||0
+      ...selectedPublicUser,
+      username:selectedPublicUser?.username||lbRow.username||base.username,
+      displayName:selectedPublicUser?.displayName||lbRow.displayName||base.displayName,
+      avatarId:selectedPublicUser?.avatarId??base.avatarId??lbRow.avatarId??'',
+      totalPoints:selectedPublicUser?.totalPoints??lbRow.totalPoints??base.totalPoints??0,
+      st:selectedPublicUser?.st??lbRow.st??base.st??0,
+      tt:selectedPublicUser?.tt??lbRow.tt??base.tt??0,
+      avg,
+      cp:selectedPublicUser?.cp??formatProfileAverage(avg),
+      dayPts:selectedPublicUser?.dayPts??dayRow.dayPts??base.dayPts??0,
+      userScore:selectedPublicUser?.userScore??base.userScore??lbRow.userScore??0
     };
-  },[selectedUserKey,users,lb,topDailyRanking]);
+  },[selectedUserKey,selectedPublicUser,users,lb,topDailyRanking]);
   const selectedUserAvatar=useMemo(()=>{
     if(!selectedUser) return null;
     return avatarById(selectedUser.avatarId);
@@ -4361,7 +4482,7 @@ function HomeScreen({currentUser,scores,liveSync}){
           </div>
           {lb.map((u,i)=><div key={u.username} className="standings-row">
             <span>{i+1}</span>
-            <button type="button" className="user-link-btn truncate" onClick={()=>setSelectedUserKey(u.username)}>{u.displayName}</button>
+            <button type="button" className="user-link-btn truncate" onClick={()=>openUserProfile(u.username)}>{u.displayName}</button>
             <span className="mono val-p">{u.totalPoints||0}</span>
             <span className="mono val-st">{u.st||0}</span>
             <span className="mono val-tt">{u.tt||0}</span>
@@ -4408,7 +4529,7 @@ function HomeScreen({currentUser,scores,liveSync}){
           <div className="standings-head"><span>RK</span><span>KULLANICI</span><span>P</span><span>FORM</span></div>
           {topDailyRanking.map((u,i)=><div key={u.username} className="standings-row">
             <span>{i+1}</span>
-            <button type="button" className="user-link-btn truncate" onClick={()=>setSelectedUserKey(u.username)}>{u.displayName}</button>
+            <button type="button" className="user-link-btn truncate" onClick={()=>openUserProfile(u.username)}>{u.displayName}</button>
             <span className="mono">{u.dayPts||0}</span>
             {u.played>0
               ?<span className="form-dots">
@@ -4424,7 +4545,7 @@ function HomeScreen({currentUser,scores,liveSync}){
         <div className="panel-head mt16">SİSTEM BİLGİSİ</div>
         <div className="insights-list">
           {systemInfos.map((x,i)=><div key={i} className={`insight-item ${x.tone}`}>
-            <div>{x.username?<button type="button" className="insight-user-btn" onClick={()=>setSelectedUserKey(x.username)}>{x.title}</button>:x.title}</div>
+            <div>{x.username?<button type="button" className="insight-user-btn" onClick={()=>openUserProfile(x.username)}>{x.title}</button>:x.title}</div>
             <small>{x.txt}</small>
           </div>)}
         </div>
@@ -4462,7 +4583,7 @@ function HomeScreen({currentUser,scores,liveSync}){
           <div className="pred-feed-list">
             {revealedPredFeed.map(u=><div key={u.key} className="pred-feed-row">
               <span className="pred-feed-line">
-                {u.home} <span className="pred-feed-score-inline">{u.h} - {u.a}</span> {u.away} <span className="pred-feed-user-tag">({(u.displayName||u.username||'').toUpperCase()})</span>
+                {u.home} <span className="pred-feed-score-inline">{u.h} - {u.a}</span> {u.away} <button type="button" className="pred-feed-user-tag" onClick={()=>openUserProfile(u.username)}>({(u.displayName||u.username||'').toUpperCase()})</button>
               </span>
             </div>)}
             {revealedPredFeed.length===0&&<div className="recap-empty">Kilit sonrası görülebilir skor tahmini henüz yok.</div>}
