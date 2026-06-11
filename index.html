@@ -11,6 +11,7 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="./config.production.js" onerror="window.WC2026_CONFIG=window.WC2026_CONFIG||{}"></script>
 <script src="./config.local.js" onerror="window.WC2026_CONFIG=window.WC2026_CONFIG||{}"></script>
+<script src="./data/golden-boot-players.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════
    SIMULATION-CORE THEME — FIFA WC 2026 PREDICTION LEAGUE
@@ -658,6 +659,32 @@ body{
 .champ-sel-flag{font-size:26px}
 .champ-sel-name{font-family:var(--f-display);font-size:18px;letter-spacing:.1em;color:var(--or);text-shadow:0 0 14px rgba(255,107,0,.2)}
 .champ-sel-sub{font-family:var(--f-mono);font-size:10px;color:var(--ts);margin-top:1px}
+.golden-boot-card .champ-title{letter-spacing:.08em;text-transform:none}
+.golden-boot-grid{grid-template-columns:1fr;max-height:220px}
+.golden-boot-grid .champ-team-btn{min-height:32px}
+.golden-boot-mark{
+  width:34px;
+  height:34px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  border:1px solid rgba(255,107,0,.38);
+  background:rgba(255,107,0,.12);
+  border-radius:2px;
+  color:var(--or);
+  font-family:var(--f-mono);
+  font-size:11px;
+  font-weight:700;
+}
+.golden-boot-other{color:var(--or);border-color:rgba(255,107,0,.35)}
+.golden-boot-custom{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin-top:10px;
+}
+.golden-boot-custom .champ-search{margin-bottom:0}
 
 /* ─────────────────────────── LEADERBOARD ─────────────────────────── */
 .lb-wrap{background:rgba(10,22,40,.85);border:1px solid var(--br);border-radius:2px;overflow:hidden}
@@ -1788,8 +1815,37 @@ body{
 .home-fm .user-modal-grid .cell.skor strong{color:#22c55e}
 .home-fm .user-modal-grid .cell.taraf strong{color:#60a5fa}
 .home-fm .user-modal-grid .cell.averaj strong{color:#fb923c}
+.home-fm .user-modal-picks{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.home-fm .user-modal-picks .cell{
+  background:rgba(10,22,40,.78);
+  border:1px solid rgba(30,45,69,.82);
+  border-radius:2px;
+  padding:10px;
+}
+.home-fm .user-modal-picks .cell span{
+  display:block;
+  font-family:var(--f-mono);
+  font-size:9px;
+  color:var(--tm);
+  letter-spacing:.12em;
+  margin-bottom:5px;
+}
+.home-fm .user-modal-picks .cell strong{
+  display:block;
+  font-family:var(--f-display);
+  color:var(--or);
+  font-size:16px;
+  letter-spacing:.04em;
+  line-height:1.2;
+}
 @media (max-width:640px){
   .home-fm .user-modal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .home-fm .user-modal-picks{grid-template-columns:1fr}
   .home-fm .user-ident{
     flex-direction:column;
     align-items:stretch;
@@ -3050,6 +3106,102 @@ const productionChampionAdapter={
 
 const championAdapter=isDemoMode()?demoChampionAdapter:productionChampionAdapter;
 
+const normalizeGoldenBootName=name=>String(name||'').trim().replace(/\s+/g,' ');
+const sameGoldenBootName=(a,b)=>normalizeGoldenBootName(a).localeCompare(normalizeGoldenBootName(b),undefined,{sensitivity:'accent'})===0;
+
+const demoGoldenBootAdapter={
+  key:username=>'golden_boot_'+String(username||'').toLowerCase(),
+  getForUser:username=>demoStorage.get(demoGoldenBootAdapter.key(username))||null,
+  loadForUser:async username=>demoStorage.get(demoGoldenBootAdapter.key(username))||null,
+  saveForUser:(username,playerName)=>{
+    const pick=normalizeGoldenBootName(playerName);
+    if(!pick) return{ok:false,error:'Gol kralı tahmini boş olamaz.'};
+    demoStorage.set(demoGoldenBootAdapter.key(username),pick);
+    return{ok:true,goldenBoot:pick};
+  },
+  deleteForUser:async username=>{demoStorage.del(demoGoldenBootAdapter.key(username));return{ok:true,goldenBoot:null}},
+  getOfficialWinner:()=>demoStorage.get('golden_boot_winner')||null
+};
+
+let productionGoldenBootCache={};
+let productionTournamentSettings={goldenBootWinner:null,loaded:false};
+const mapSupabaseGoldenBootPick=row=>row?.player_name||null;
+async function loadProductionTournamentSettings(force=false){
+  if(productionTournamentSettings.loaded&&!force) return productionTournamentSettings;
+  if(isDemoMode()) return productionTournamentSettings;
+  try{
+    const {session}=await requireSupabaseUser();
+    const rows=await supabaseFetch('/rest/v1/app_settings?key=eq.tournament&select=value',{token:session.access_token});
+    const value=Array.isArray(rows)&&rows[0]?rows[0].value:null;
+    const winner=normalizeGoldenBootName(value?.golden_boot_winner)||null;
+    productionTournamentSettings={goldenBootWinner:winner,loaded:true};
+  }catch(err){
+    if(isProductionMode()) console.warn('Tournament settings load failed:',safeSupabaseError(err));
+    productionTournamentSettings={goldenBootWinner:null,loaded:true};
+  }
+  return productionTournamentSettings;
+}
+const productionGoldenBootAdapter={
+  key:username=>String(username||productionCurrentUser?.username||'').toLowerCase(),
+  getForUser:username=>productionGoldenBootCache[productionGoldenBootAdapter.key(username)]||null,
+  loadForUser:async username=>{
+    const {session,user}=await requireSupabaseUser();
+    const key=productionGoldenBootAdapter.key(username);
+    const rows=await supabaseFetch(`/rest/v1/golden_boot_picks?user_id=eq.${encodeURIComponent(user.id)}&select=player_name,created_at,updated_at`,{token:session.access_token});
+    const pick=mapSupabaseGoldenBootPick(Array.isArray(rows)?rows[0]:null);
+    productionGoldenBootCache[key]=pick;
+    return pick;
+  },
+  saveForUser:async(username,playerName)=>{
+    try{
+      const player_name=normalizeGoldenBootName(playerName);
+      if(!player_name) return{ok:false,error:'Gol kralı tahmini boş olamaz.'};
+      const {session,user}=await requireSupabaseUser();
+      const key=productionGoldenBootAdapter.key(username);
+      const existing=await supabaseFetch(`/rest/v1/golden_boot_picks?user_id=eq.${encodeURIComponent(user.id)}&select=user_id`,{token:session.access_token});
+      const rows=Array.isArray(existing)&&existing.length>0
+        ?await supabaseFetch(`/rest/v1/golden_boot_picks?user_id=eq.${encodeURIComponent(user.id)}&select=player_name,created_at,updated_at`,{
+          method:'PATCH',
+          token:session.access_token,
+          body:{player_name},
+          headers:{Prefer:'return=representation'}
+        })
+        :await supabaseFetch('/rest/v1/golden_boot_picks?select=player_name,created_at,updated_at',{
+          method:'POST',
+          token:session.access_token,
+          body:{user_id:user.id,player_name},
+          headers:{Prefer:'return=representation'}
+        });
+      const pick=mapSupabaseGoldenBootPick(Array.isArray(rows)?rows[0]:null)||player_name;
+      productionGoldenBootCache[key]=pick;
+      return{ok:true,goldenBoot:pick};
+    }catch(err){
+      return{ok:false,error:friendlySupabaseWriteError(err)};
+    }
+  },
+  deleteForUser:async username=>{
+    try{
+      const {session,user}=await requireSupabaseUser();
+      const key=productionGoldenBootAdapter.key(username);
+      await supabaseFetch(`/rest/v1/golden_boot_picks?user_id=eq.${encodeURIComponent(user.id)}`,{
+        method:'DELETE',
+        token:session.access_token
+      });
+      productionGoldenBootCache[key]=null;
+      return{ok:true,goldenBoot:null};
+    }catch(err){
+      return{ok:false,error:friendlySupabaseWriteError(err)};
+    }
+  },
+  getOfficialWinner:()=>productionTournamentSettings.goldenBootWinner||null,
+  loadOfficialWinner:async()=>{
+    const settings=await loadProductionTournamentSettings();
+    return settings.goldenBootWinner||null;
+  }
+};
+
+const goldenBootAdapter=isDemoMode()?demoGoldenBootAdapter:productionGoldenBootAdapter;
+
 const mapSupabaseScore=row=>({
   h:Number(row.home_score),
   a:Number(row.away_score),
@@ -3446,6 +3598,11 @@ async function loadProductionPublicData(){
 }
 
 const ALL_TEAMS=[...new Set(MATCHES.flatMap(m=>[m.h,m.a]))].filter(t=>!t.startsWith('UEFA')&&!t.startsWith('IC-')).sort((a,b)=>a.localeCompare(b,'tr'));
+const GOLDEN_BOOT_PLAYERS=Array.isArray(window.GOLDEN_BOOT_PLAYERS)?window.GOLDEN_BOOT_PLAYERS:[];
+const GOLDEN_BOOT_OTHER_OPTION='Diğer';
+const GOLDEN_BOOT_CORRECT_POINTS=3;
+const TOURNAMENT_FIRST_KICKOFF_UTC='2026-06-11T19:00:00Z';
+const TOURNAMENT_PICK_LOCK_OFFSET_MINUTES=60;
 
 /*  HELPERS  */
 const TR3=3*60;
@@ -3476,6 +3633,9 @@ const cdText=(u,now)=>{
   if(h>0) return`${h}s ${m}dk`;
   return`${m}dk`;
 };
+const getTournamentPickLockAt=()=>new Date(new Date(TOURNAMENT_FIRST_KICKOFF_UTC).getTime()-TOURNAMENT_PICK_LOCK_OFFSET_MINUTES*60000);
+const isTournamentPickLocked=now=>now>=getTournamentPickLockAt();
+const isTournamentPickPublic=now=>isTournamentPickLocked(now);
 const getLockState=(m,now)=>{
   const start=new Date(m.utc).getTime();
   const ms=now.getTime();
@@ -3521,8 +3681,10 @@ const ruleOutcomePoints=(m,pred,sc)=>{
 const ruleMatchPoints=(m,pred,sc)=>ruleScorePoints(pred,sc)+ruleOutcomePoints(m,pred,sc);
 const isLiveScore=sc=>sc&&sc.status==='live';
 const computeLeaderboard=(users,scores)=>{
+  const officialGoldenBoot=goldenBootAdapter.getOfficialWinner();
   const rows=Object.values(users).map(u=>{
     const preds=predictionsAdapter.getForUser(u.username);
+    const goldenBootPick=goldenBootAdapter.getForUser(u.username);
     let confirmed=0,potentialLive=0,st=0,tt=0,playedFinal=0;
     MATCHES.forEach(m=>{
       const pred=preds[m.id];
@@ -3538,9 +3700,11 @@ const computeLeaderboard=(users,scores)=>{
         if(outcome(pred.h,pred.a)===outcome(sc.h,sc.a)) tt++;
       }
     });
+    const goldenBootPts=officialGoldenBoot&&goldenBootPick&&sameGoldenBootName(goldenBootPick,officialGoldenBoot)?GOLDEN_BOOT_CORRECT_POINTS:0;
+    confirmed+=goldenBootPts;
     const totalPoints=confirmed+potentialLive;
     const avg=playedFinal?confirmed/playedFinal:0;
-    return{...u,totalPoints,confirmedPts:confirmed,potentialPts:potentialLive,st,tt,avg,played:playedFinal};
+    return{...u,totalPoints,confirmedPts:confirmed,potentialPts:potentialLive,st,tt,avg,played:playedFinal,goldenBootPts};
   });
   return rows.sort((a,b)=>(b.totalPoints-a.totalPoints||b.avg-a.avg||b.st-a.st||b.tt-a.tt||a.displayName.localeCompare(b.displayName,'tr')));
 };
@@ -3578,6 +3742,7 @@ const productionLeaderboardAdapter={
   getLeaderboard:()=>productionLeaderboardCache,
   loadLeaderboard:async()=>{
     const {session}=await requireSupabaseUser();
+    await loadProductionTournamentSettings();
     const rows=await supabaseFetch('/rest/v1/leaderboard?select=user_id,username,display_name,total_points,exact_scores,correct_outcomes,scored_matches&order=total_points.desc,username.asc',{token:session.access_token});
     productionLeaderboardCache=(Array.isArray(rows)?rows:[]).map(mapSupabaseLeaderboardRow);
     return productionLeaderboardCache;
@@ -3647,6 +3812,23 @@ async function loadSupabasePublicUserProfile(username,{scores={},rankingDayKey=n
     console.warn('Supabase public profile predictions load failed:',safeSupabaseError(err));
   }
 
+  let championPick=null;
+  let goldenBootPick=null;
+  if(isTournamentPickPublic(new Date())){
+    try{
+      const championRows=await supabaseFetch(`/rest/v1/champion_picks?user_id=eq.${encodeURIComponent(profile.id)}&select=team`,{token:session.access_token});
+      championPick=mapSupabaseChampionPick(Array.isArray(championRows)?championRows[0]:null);
+    }catch(err){
+      console.warn('Supabase public profile champion pick load failed:',safeSupabaseError(err));
+    }
+    try{
+      const goldenRows=await supabaseFetch(`/rest/v1/golden_boot_picks?user_id=eq.${encodeURIComponent(profile.id)}&select=player_name`,{token:session.access_token});
+      goldenBootPick=mapSupabaseGoldenBootPick(Array.isArray(goldenRows)?goldenRows[0]:null);
+    }catch(err){
+      console.warn('Supabase public profile golden boot pick load failed:',safeSupabaseError(err));
+    }
+  }
+
   const avg=lbRow?.avg!=null?lbRow.avg:(lbRow?.played?Number(lbRow.totalPoints||0)/Number(lbRow.played||1):0);
   return{
     id:profile.id,
@@ -3661,6 +3843,8 @@ async function loadSupabasePublicUserProfile(username,{scores={},rankingDayKey=n
     cp:formatProfileAverage(avg),
     dayPts:calculateDayPointsFromPredictions(publicPreds,scores,rankingDayKey),
     userScore:calculateProfileScoreFromPredictions(publicPreds,scores),
+    championPick,
+    goldenBootPick,
     role:'user'
   };
 }
@@ -4325,6 +4509,7 @@ function HomeScreen({currentUser,scores,liveSync}){
 
   const selectedUser=useMemo(()=>{
     if(!selectedUserKey) return null;
+    const picksPublic=isTournamentPickPublic(now);
     const lbRow=lb.find(x=>x.username===selectedUserKey)||{};
     const dayRow=topDailyRanking.find(x=>x.username===selectedUserKey)||{};
     const base=users[selectedUserKey]||selectedPublicUser||lbRow;
@@ -4342,9 +4527,11 @@ function HomeScreen({currentUser,scores,liveSync}){
       avg,
       cp:selectedPublicUser?.cp??formatProfileAverage(avg),
       dayPts:selectedPublicUser?.dayPts??dayRow.dayPts??base.dayPts??0,
-      userScore:selectedPublicUser?.userScore??base.userScore??lbRow.userScore??0
+      userScore:selectedPublicUser?.userScore??base.userScore??lbRow.userScore??0,
+      championPick:selectedPublicUser?.championPick??(picksPublic?championAdapter.getForUser(base.username):null),
+      goldenBootPick:selectedPublicUser?.goldenBootPick??(picksPublic?goldenBootAdapter.getForUser(base.username):null)
     };
-  },[selectedUserKey,selectedPublicUser,users,lb,topDailyRanking]);
+  },[selectedUserKey,selectedPublicUser,users,lb,topDailyRanking,now]);
   const selectedUserAvatar=useMemo(()=>{
     if(!selectedUser) return null;
     return avatarById(selectedUser.avatarId);
@@ -4622,6 +4809,10 @@ function HomeScreen({currentUser,scores,liveSync}){
             <div className="cell averaj"><span>AVERAJ(+)</span><strong>{selectedUser.cp||0}</strong></div>
             <div className="cell puan"><span>GÜN PUAN</span><strong>{selectedUser.dayPts||0}</strong></div>
           </div>
+          {isTournamentPickPublic(now)&&<div className="user-modal-picks">
+            <div className="cell"><span>ŞAMPİYON TAHMİNİ</span><strong>{selectedUser.championPick||'-'}</strong></div>
+            <div className="cell"><span>GOL KRALI TAHMİNİ</span><strong>{selectedUser.goldenBootPick||'-'}</strong></div>
+          </div>}
         </div>
       </div>
     </div>}
@@ -4667,6 +4858,7 @@ function MyScreen({currentUser,onUserUpdate,scores}){
   const [tab,setTab]=useState('predict');
   const [preds,setPreds]=useState(()=>predictionsAdapter.getForUser(currentUser.username));
   const [champion,setChampion]=useState(()=>championAdapter.getForUser(currentUser.username));
+  const [goldenBoot,setGoldenBoot]=useState(()=>goldenBootAdapter.getForUser(currentUser.username));
   const [avatarOpen,setAvatarOpen]=useState(false);
   const [avatarPreviewError,setAvatarPreviewError]=useState(false);
   const toast=useToast();
@@ -4680,13 +4872,15 @@ function MyScreen({currentUser,onUserUpdate,scores}){
     let cancelled=false;
     (async()=>{
       try{
-        const [loadedPreds,loadedChampion]=await Promise.all([
+        const [loadedPreds,loadedChampion,loadedGoldenBoot]=await Promise.all([
           predictionsAdapter.loadForUser(currentUser.username),
-          championAdapter.loadForUser(currentUser.username)
+          championAdapter.loadForUser(currentUser.username),
+          goldenBootAdapter.loadForUser(currentUser.username)
         ]);
         if(cancelled) return;
         setPreds(loadedPreds||{});
         setChampion(loadedChampion||null);
+        setGoldenBoot(loadedGoldenBoot||null);
       }catch(err){
         if(!cancelled&&isProductionMode()) toast(friendlySupabaseWriteError(err),'error');
       }
@@ -4717,6 +4911,17 @@ function MyScreen({currentUser,onUserUpdate,scores}){
     try{fresh=await championAdapter.loadForUser(currentUser.username)}catch(err){if(isProductionMode())console.warn('Champion pick refresh failed:',safeSupabaseError(err))}
     setChampion(fresh||res.champion||team);
     toast(`Şampiyon tahmini güncellendi: ${fresh||res.champion||team} `,'success');
+  };
+  const saveGoldenBoot=async(playerName)=>{
+    if(isTournamentPickLocked(now)){toast('Gol kralı tahmini kilitlendi, değişiklik yapılamaz!','error');return;}
+    const pick=normalizeGoldenBootName(playerName);
+    if(!pick){toast('Gol kralı tahmini boş olamaz.','error');return;}
+    const res=await goldenBootAdapter.saveForUser(currentUser.username,pick);
+    if(!res.ok){toast(res.error||'Gol kralı tahmini güncellenemedi.','error');return;}
+    let fresh=res.goldenBoot;
+    try{fresh=await goldenBootAdapter.loadForUser(currentUser.username)}catch(err){if(isProductionMode())console.warn('Golden Boot pick refresh failed:',safeSupabaseError(err))}
+    setGoldenBoot(fresh||res.goldenBoot||pick);
+    toast(`Gol kralı tahmini güncellendi: ${fresh||res.goldenBoot||pick} `,'success');
   };
   const saveAvatar=async(avatarId)=>{
     if(isProductionMode()){
@@ -4810,6 +5015,7 @@ function MyScreen({currentUser,onUserUpdate,scores}){
     <section className="my-workspace">
       <aside className="my-side">
         <ChampionCard champion={champion} onSave={saveChampion} now={now}/>
+        <GoldenBootCard goldenBoot={goldenBoot} onSave={saveGoldenBoot} now={now}/>
         <div className="my-side-note">
           <div className="panel-head">SİSTEM NOTU</div>
           <p>Tahminler maçtan 60 dakika önce otomatik kilitlenir. Kilit sonrası değişiklik yapılamaz.</p>
@@ -4858,9 +5064,8 @@ function ChampionCard({champion,onSave,now}){
   const [open,setOpen]=useState(false);
   const [search,setSearch]=useState('');
   const filtered=ALL_TEAMS.filter(t=>t.toLowerCase().includes(search.toLowerCase()));
-  const firstMatchStart=new Date('2026-06-11T19:00:00Z');
-  const lockAt=new Date(firstMatchStart.getTime()-60*60000);
-  const isLocked=now>=lockAt;
+  const lockAt=getTournamentPickLockAt();
+  const isLocked=isTournamentPickLocked(now);
   const lockCountdown=cdText(lockAt.toISOString(),now);
   useEffect(()=>{if(isLocked&&open)setOpen(false)},[isLocked,open]);
   return<div className="champ-card">
@@ -4891,6 +5096,80 @@ function ChampionCard({champion,onSave,now}){
           {filtered.length>24&&<p style={{fontSize:11,color:'var(--tm)',marginTop:8}}>+{filtered.length-24} daha... aramaya devam edin</p>}
         </>}
     </>}
+  </div>;
+}
+
+/*  Golden Boot Prediction Card  */
+function GoldenBootCard({goldenBoot,onSave,now}){
+  const [open,setOpen]=useState(false);
+  const [search,setSearch]=useState('');
+  const [customMode,setCustomMode]=useState(false);
+  const [customName,setCustomName]=useState('');
+  const lockAt=getTournamentPickLockAt();
+  const isLocked=isTournamentPickLocked(now);
+  const lockCountdown=cdText(lockAt.toISOString(),now);
+  const isKnownPick=goldenBoot&&GOLDEN_BOOT_PLAYERS.some(p=>sameGoldenBootName(p,goldenBoot));
+  const filtered=GOLDEN_BOOT_PLAYERS.filter(p=>p.toLocaleLowerCase('tr').includes(search.toLocaleLowerCase('tr')));
+  useEffect(()=>{if(isLocked&&open)setOpen(false)},[isLocked,open]);
+  useEffect(()=>{
+    if(goldenBoot&&!GOLDEN_BOOT_PLAYERS.some(p=>sameGoldenBootName(p,goldenBoot))){
+      setCustomMode(true);
+      setCustomName(goldenBoot);
+    }
+  },[goldenBoot]);
+  const pickPlayer=player=>{
+    onSave(player);
+    setOpen(false);
+    setSearch('');
+    setCustomMode(false);
+  };
+  const pickOther=()=>{
+    setCustomMode(true);
+    setOpen(false);
+    if(!isKnownPick&&goldenBoot) setCustomName(goldenBoot);
+  };
+  const saveCustom=()=>{
+    const pick=normalizeGoldenBootName(customName);
+    if(pick) onSave(pick);
+  };
+  return<div className="champ-card golden-boot-card">
+    <div className="champ-title">Dünya Kupası Gol Kralı Kim Olur?</div>
+    <div className="champ-sub">
+      {isLocked
+        ?'Gol kralı tahmini kilitlendi (ilk maçtan 60 dk önce).'
+        :`Kalan Süre: ${lockCountdown||'0dk'} (şampiyon tahminiyle aynı anda kilitlenir)`}
+    </div>
+    {goldenBoot&&<div className="champ-selected">
+      <span className="golden-boot-mark">GB</span>
+      <div style={{flex:1}}>
+        <div className="champ-sel-name">{goldenBoot}</div>
+        <div className="champ-sel-sub">Gol kralı tahmininiz</div>
+      </div>
+      {!isLocked&&<button className="btn-sm-ghost" onClick={()=>{setOpen(o=>!o);setCustomMode(false)}}>{open?'Kapat':'Değiştir'}</button>}
+    </div>}
+
+    {!isLocked&&(!goldenBoot||open)&&<>
+      <input
+        className="champ-search"
+        placeholder="Oyuncu ara veya seç..."
+        value={search}
+        onFocus={()=>{setOpen(true);setCustomMode(false)}}
+        onClick={()=>{setOpen(true);setCustomMode(false)}}
+        onChange={e=>{setSearch(e.target.value);setOpen(true);setCustomMode(false)}}
+      />
+      {open&&<div className="champ-grid golden-boot-grid">
+        <button type="button" className="champ-team-btn golden-boot-other" onClick={pickOther}><span>{GOLDEN_BOOT_OTHER_OPTION}</span></button>
+        {filtered.map(p=><button key={p} type="button" className={`champ-team-btn${sameGoldenBootName(p,goldenBoot)?' selected':''}`} onClick={()=>pickPlayer(p)}><span>{p}</span></button>)}
+      </div>}
+      {filtered.length===0&&open&&<p style={{fontSize:11,color:'var(--tm)',marginTop:8}}>Listede eşleşme yok. Diğer seçeneğiyle oyuncu adı girebilirsiniz.</p>}
+    </>}
+
+    {!isLocked&&customMode&&<div className="golden-boot-custom">
+      <input className="champ-search" placeholder="Oyuncu adını yaz..." value={customName} onChange={e=>setCustomName(e.target.value)} />
+      <button type="button" className="btn-sm-ghost" onClick={saveCustom}>Kaydet</button>
+    </div>}
+
+    {isLocked&&!goldenBoot&&<div style={{fontSize:12,color:'var(--tm)',lineHeight:1.6}}>Tahmin süresi doldu. İlk maçtan 60 dakika önce gol kralı seçimi kapatıldı.</div>}
   </div>;
 }
 
@@ -5070,7 +5349,8 @@ function RulesScreen(){
     {icon:'═',t:'Beraberlik',d:'Maç beraberlikle biterse',pts:'+2',c:'pts-g'},
     {icon:'⇄',t:'Diğer Takım Galibiyeti',d:'İki "diğer" takım arasındaki galibiyeti tahmin et',pts:'+1',c:'pts-g'},
     {icon:'▲',t:'Sürpriz Galibiyet',d:'Seri başı olmayan takım seri başına galip gelirse',pts:'+3',c:'pts-g'},
-    {icon:'★',t:'Şampiyon Tahmini',d:'Turnuvayı kazanan takımı doğru tahmin et',pts:'+5',c:'pts-gold'}
+    {icon:'★',t:'Şampiyon Tahmini',d:'Turnuvayı kazanan takımı doğru tahmin et',pts:'+5',c:'pts-gold'},
+    {icon:'⚽',t:'Gol Kralı Tahmini',d:'Turnuva başlamadan önce seçilir. Doğru tahmin',pts:'+3',c:'pts-gold'}
   ];
 
   const scoreMap=[
@@ -5155,6 +5435,7 @@ function RulesScreen(){
           <ul className="rules-notes">
             <li>Kilitlenen tahminler Ana Sayfa'da herkese görünür.</li>
             <li>Şampiyon tahmini turnuvanın ilk maçına kadar değiştirilebilir.</li>
+            <li>Dünya Kupası Gol Kralı Tahmini: Turnuva başlamadan önce seçilir. Doğru tahmin +3 puan kazandırır.</li>
             <li>Aynı puan/averajda ST değeri yüksek olan üst sırada yer alır.</li>
             <li>Canlı skor ve maç sonuçları yalnızca otomatik veri entegrasyonu ile güncellenir.</li>
             <li>Veri silinmez, skor geçmişi kalıcıdır.</li>
