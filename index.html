@@ -1347,7 +1347,8 @@ body{
   border-radius:2px;
   background:rgba(17,29,53,.28);
   height:146px;
-  overflow:hidden;
+  overflow-x:hidden;
+  overflow-y:auto;
   position:relative;
 }
 .home-fm .news-track{
@@ -1370,6 +1371,17 @@ body{
   color:var(--or);
   font-family:var(--f-mono);
   margin-right:6px;
+}
+.home-fm .news-item.positive{
+  background:rgba(34,197,94,.06);
+}
+.home-fm .news-item.positive .dot,
+.home-fm .news-points{
+  color:var(--green);
+}
+.home-fm .news-points{
+  font-family:var(--f-mono);
+  font-weight:700;
 }
 @keyframes newsUp{
   0%{transform:translateY(0)}
@@ -1504,7 +1516,18 @@ body{
   background:#0f1d35;
 }
 .home-fm .st-chip.live{color:#22c55e;border-color:rgba(34,197,94,.55)}
-.home-fm .st-chip.full{color:#f87171;border-color:rgba(248,113,113,.6);background:rgba(248,113,113,.08)}
+.home-fm .st-chip.full{
+  width:100%;
+  min-width:0;
+  padding:0 2px;
+  color:#f87171;
+  border-color:rgba(248,113,113,.6);
+  background:rgba(248,113,113,.08);
+  font-size:8px;
+  line-height:1;
+  letter-spacing:-.02em;
+  white-space:nowrap;
+}
 .home-fm .st-chip.idle{color:var(--tm);border-color:rgba(100,116,139,.45)}
 .home-fm .recap-empty{
   padding:16px;
@@ -2408,6 +2431,7 @@ body{
   letter-spacing:.07em;
 }
 .app-root.fm-shell .home-fm .st-chip{height:20px}
+.app-root.fm-shell .home-fm .st-chip.full{font-size:8px}
 
 @keyframes dotPulse{
   0%,100%{transform:scale(1);opacity:.95}
@@ -2551,6 +2575,11 @@ body{
     gap:6px;
     padding:7px 6px;
     min-width:0;
+  }
+  .app-root.fm-shell .home-fm .st-chip.full{
+    padding:0 1px;
+    font-size:7px;
+    letter-spacing:-.03em;
   }
   .home-fm .recap-head span:nth-child(5),
   .home-fm .recap-row span:nth-child(5){display:none}
@@ -3080,6 +3109,24 @@ const collectVisiblePredictionRows=(predictionRows,profileRows)=>{
   return [...unique.values()];
 };
 
+const mapPublicProfileRows=rows=>{
+  const unique=new Map();
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    const username=String(row?.username||'').toLowerCase();
+    if(!username) return;
+    const id=row.id||username;
+    unique.set(String(id),{
+      id,
+      userId:id,
+      username,
+      displayName:row.display_name||row.username||'Oyuncu',
+      avatarId:row.avatar_id||'',
+      createdAt:row.created_at||null
+    });
+  });
+  return [...unique.values()];
+};
+
 const getDemoVisiblePredictionRows=()=>{
   const users=demoUsersAdapter.getAll();
   const rows=[];
@@ -3101,20 +3148,33 @@ const getDemoVisiblePredictionRows=()=>{
   return rows;
 };
 
+const getDemoPublicProfileRows=()=>Object.values(demoUsersAdapter.getAll()).map(user=>({
+  id:user.id||user.userId||user.username,
+  userId:user.id||user.userId||user.username,
+  username:user.username,
+  displayName:user.displayName||user.username,
+  avatarId:user.avatarId||'',
+  createdAt:user.createdAt||null
+}));
+
 const demoPredictionRevealAdapter={
   getVisible:()=>getDemoVisiblePredictionRows(),
-  loadVisible:async()=>getDemoVisiblePredictionRows()
+  loadVisible:async()=>getDemoVisiblePredictionRows(),
+  getProfiles:()=>getDemoPublicProfileRows()
 };
 
 let productionVisiblePredictionsCache=[];
+let productionPublicProfilesCache=[];
 const productionPredictionRevealAdapter={
   getVisible:()=>productionVisiblePredictionsCache,
+  getProfiles:()=>productionPublicProfilesCache,
   loadVisible:async()=>{
     const {session}=await requireSupabaseUser();
     const [predictionRows,profileRows]=await Promise.all([
       supabaseFetch('/rest/v1/predictions?select=user_id,match_id,home_score,away_score,created_at,updated_at&order=match_id.asc,user_id.asc',{token:session.access_token}),
-      supabaseFetch('/rest/v1/profiles?select=id,username,display_name,avatar_id&order=username.asc',{token:session.access_token})
+      supabaseFetch('/rest/v1/profiles?select=id,username,display_name,avatar_id,created_at&order=username.asc',{token:session.access_token})
     ]);
+    productionPublicProfilesCache=mapPublicProfileRows(profileRows);
     productionVisiblePredictionsCache=collectVisiblePredictionRows(predictionRows,profileRows);
     return productionVisiblePredictionsCache;
   }
@@ -3286,7 +3346,8 @@ const mapSupabaseScore=row=>({
   h:Number(row.home_score),
   a:Number(row.away_score),
   status:row.status||'upcoming',
-  minute:Number(row.minute)||0
+  minute:Number(row.minute)||0,
+  updatedAt:row.updated_at||row.provider_updated_at||row.created_at||null
 });
 
 const demoScoresAdapter={
@@ -3300,7 +3361,7 @@ const productionScoresAdapter={
   getScores:()=>productionScoresCache,
   saveScores:()=>{},
   loadScores:async()=>{
-    const rows=await supabaseRead('scores','select=match_id,home_score,away_score,status,minute&order=match_id.asc');
+    const rows=await supabaseRead('scores','select=match_id,home_score,away_score,status,minute,provider_updated_at,created_at,updated_at&order=match_id.asc');
     productionScoresCache=rows.reduce((acc,row)=>{
       if(row.match_id==null) return acc;
       if((row.status||'upcoming')==='upcoming') return acc;
@@ -4462,6 +4523,7 @@ function HomeScreen({currentUser,scores,liveSync}){
   const [selectedUserKey,setSelectedUserKey]=useState(null);
   const [selectedPublicUser,setSelectedPublicUser]=useState(null);
   const [visiblePredictions,setVisiblePredictions]=useState(()=>predictionRevealAdapter.getVisible());
+  const [publicProfiles,setPublicProfiles]=useState(()=>predictionRevealAdapter.getProfiles());
   useEffect(()=>{const id=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(id)},[]);
 
   const users=usersAdapter.getAll();
@@ -4503,7 +4565,10 @@ function HomeScreen({currentUser,scores,liveSync}){
     (async()=>{
       try{
         const rows=await predictionRevealAdapter.loadVisible();
-        if(!cancelled) setVisiblePredictions(rows||[]);
+        if(!cancelled){
+          setVisiblePredictions(rows||[]);
+          setPublicProfiles(predictionRevealAdapter.getProfiles()||[]);
+        }
       }catch(err){
         if(!cancelled&&isProductionMode()) console.warn('Supabase visible predictions load failed:',safeSupabaseError(err));
       }
@@ -4652,89 +4717,90 @@ function HomeScreen({currentUser,scores,liveSync}){
   },[selectedUser]);
   const selectedUserAvatarFallback=useMemo(()=>((selectedUser?.displayName||selectedUser?.username||'U').charAt(0).toUpperCase()),[selectedUser]);
 
+  const registeredPlayerCount=isProductionMode()?lb.length:Object.keys(users).length;
+  const newsProfiles=isProductionMode()?publicProfiles:Object.values(users);
   const comms=useMemo(()=>{
-    const nowMs=now.getTime();
-    const list=[];
-    const push=(text,ts=nowMs)=>list.push({id:`news_${list.length}_${Math.max(0,Math.floor(ts))}`,text,ts:Number.isFinite(ts)?ts:nowMs});
-    const userList=Object.values(users);
+    const events=new Map();
+    const safeTimestamp=(value,fallback=0)=>{
+      const parsed=value?new Date(value).getTime():NaN;
+      return Number.isFinite(parsed)?parsed:fallback;
+    };
+    const add=event=>{
+      if(!event?.id||events.has(event.id)) return;
+      events.set(event.id,event);
+    };
 
-    userList
-      .filter(u=>u.createdAt)
-      .sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime())
-      .slice(0,2)
-      .forEach(u=>push(`${u.displayName} adlı kullanıcı üye oldu.`,new Date(u.createdAt).getTime()));
+    newsProfiles
+      .filter(profile=>profile?.username&&profile.createdAt)
+      .forEach(profile=>add({
+        id:`registration:${profile.userId||profile.id||profile.username}`,
+        type:'registration',
+        text:`${profile.displayName||profile.username} adlı kullanıcı üye oldu.`,
+        ts:safeTimestamp(profile.createdAt),
+        priority:1
+      }));
 
-    const finishedDesc=MATCHES
-      .filter(m=>{
+    enriched
+      .filter(m=>m.status==='live')
+      .forEach(m=>{
         const sc=scores[m.id];
-        return sc&&typeof sc.h==='number'&&typeof sc.a==='number'&&sc.status!=='live';
-      })
-      .sort((a,b)=>new Date(b.utc).getTime()-new Date(a.utc).getTime());
+        const providerLive=sc?.status==='live';
+        add({
+          id:`live:${m.id}`,
+          type:'live',
+          text:`${m.h} - ${m.a} maçı ${providerLive?'devam ediyor':'başladı'}.`,
+          ts:safeTimestamp(sc?.updatedAt,new Date(m.utc).getTime()),
+          priority:2
+        });
+      });
 
-    let exactAdded=false;
-    for(const m of finishedDesc){
+    const finishedMatches=enriched.filter(m=>{
       const sc=scores[m.id];
-      for(const u of userList){
-        const p=predictionsAdapter.getForUser(u.username)[m.id];
-        if(p&&p.h===sc.h&&p.a===sc.a){
-          push(`${u.displayName} adlı kullanıcı başarılı skor tahmini yaptı.`,new Date(m.utc).getTime()+3);
-          exactAdded=true;
-          break;
-        }
-      }
-      if(exactAdded) break;
+      return m.status==='finished'&&isFinalScoreForUserProfile(sc);
+    });
+    finishedMatches.forEach(m=>{
+      const sc=scores[m.id];
+      const finishedAt=safeTimestamp(sc.updatedAt,new Date(m.utc).getTime()+120*60000);
+      add({
+        id:`finished:${m.id}`,
+        type:'finished',
+        text:`${m.h} - ${m.a} maçı ${sc.h}-${sc.a} sona erdi.`,
+        ts:finishedAt,
+        priority:3
+      });
+    });
+
+    visiblePredictions.forEach(pred=>{
+      const m=finishedMatches.find(match=>String(match.id)===String(pred.matchId));
+      if(!m||typeof pred.h!=='number'||typeof pred.a!=='number') return;
+      const sc=scores[m.id];
+      const points=ruleMatchPoints(m,pred,sc);
+      if(points<=0) return;
+      add({
+        id:`points:${pred.userId||pred.username}:${m.id}`,
+        type:'points',
+        displayName:pred.displayName||pred.username||'Oyuncu',
+        matchLabel:`${m.h} - ${m.a}`,
+        points,
+        ts:safeTimestamp(sc.updatedAt,new Date(m.utc).getTime()+120*60000),
+        priority:4
+      });
+    });
+
+    if(events.size===0){
+      add({
+        id:'system:preparing',
+        type:'system',
+        text:'Turnuva haber akışı hazırlanıyor.',
+        ts:0,
+        priority:0
+      });
     }
 
-    let streakAdded=false;
-    for(const u of userList){
-      let streak=0;
-      for(const m of finishedDesc){
-        const sc=scores[m.id];
-        const p=predictionsAdapter.getForUser(u.username)[m.id];
-        if(!p) continue;
-        if(p.h===sc.h&&p.a===sc.a){
-          streak++;
-          if(streak>=2){
-            push(`${u.displayName} adlı kullanıcı üst üste ${streak} skor bildi.`,new Date(m.utc).getTime()+2);
-            streakAdded=true;
-            break;
-          }
-        }else{
-          streak=0;
-        }
-      }
-      if(streakAdded) break;
-    }
-
-    if(lb[0]) push(`Lider değişti, yeni lider ${lb[0].displayName}.`,nowMs-120000);
-    if(nextM) push(`Sonraki maç ${nextM.h} - ${nextM.a}.`,new Date(nextM.utc).getTime());
-    if(live[0]) push(`Canlı maçta son durum: ${live[0].h} - ${live[0].a}.`,nowMs+1500);
-
-    let missedAdded=false;
-    for(const m of finishedDesc){
-      for(const u of userList){
-        const p=predictionsAdapter.getForUser(u.username)[m.id];
-        if(!p){
-          push(`${u.displayName}, ${m.h} - ${m.a} maçı tahminini kaçırdı.`,new Date(m.utc).getTime()+1);
-          missedAdded=true;
-          break;
-        }
-      }
-      if(missedAdded) break;
-    }
-
-    if(list.length===0) push('Turnuva haber akışı hazırlanıyor.',nowMs);
-
-    const seen=new Set();
-    return list
-      .sort((a,b)=>b.ts-a.ts)
-      .filter(item=>{
-        if(seen.has(item.text)) return false;
-        seen.add(item.text);
-        return true;
-      })
-      .slice(0,12);
-  },[users,scores,lb,nextM,live,now]);
+    return [...events.values()]
+      .sort((a,b)=>b.ts-a.ts||b.priority-a.priority||a.id.localeCompare(b.id,'tr'))
+      .slice(0,8);
+  },[newsProfiles,enriched,scores,visiblePredictions]);
 
   const systemInfos=useMemo(()=>[
     {tone:'gold',title:'Gün Verisi',txt:'Seçili gün için puanlanan tahmin verisi bekleniyor.'},
@@ -4752,7 +4818,7 @@ function HomeScreen({currentUser,scores,liveSync}){
           <div className="context-overline">INTERNATIONAL · TOURNAMENT</div>
           <h1>FIFA WORLD CUP 2026</h1>
           <div className="context-meta">
-            <span>{Object.keys(users).length} oyuncu</span>
+            <span>{registeredPlayerCount} oyuncu</span>
             <span>•</span>
             <span>{MATCHES.length} maç</span>
             <span>•</span>
@@ -4792,10 +4858,12 @@ function HomeScreen({currentUser,scores,liveSync}){
 
         <div className="panel-head mt16">Turnuva Haberleri <span className="panel-tag">{comms.length} NEW</span></div>
         <div className="news-marquee">
-          <div className={`news-track${comms.length<2?' static':''}`}>
-            {[...comms,...(comms.length>1?comms:[])].map((item,i)=><div key={`${item.id}_${i}`} className="news-item">
+          <div className="news-track static">
+            {comms.map(item=><div key={item.id} className={`news-item${item.type==='points'?' positive':''}`}>
               <span className="dot">•</span>
-              <span>{item.text}</span>
+              {item.type==='points'
+                ?<span>{item.displayName}, {item.matchLabel} maçından <strong className="news-points">+{item.points} puan</strong> kazandı.</span>
+                :<span>{item.text}</span>}
             </div>)}
           </div>
         </div>
