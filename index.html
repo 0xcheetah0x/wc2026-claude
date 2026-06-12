@@ -3043,6 +3043,73 @@ const productionPredictionsAdapter={
 
 const predictionsAdapter=isDemoMode()?demoPredictionsAdapter:productionPredictionsAdapter;
 
+const collectVisiblePredictionRows=(predictionRows,profileRows)=>{
+  const profilesById=(Array.isArray(profileRows)?profileRows:[]).reduce((acc,profile)=>{
+    if(profile?.id) acc[String(profile.id)]=profile;
+    return acc;
+  },{});
+  const unique=new Map();
+  (Array.isArray(predictionRows)?predictionRows:[]).forEach(row=>{
+    const profile=profilesById[String(row.user_id)];
+    if(!profile||row.match_id==null) return;
+    const username=String(profile.username||'').toLowerCase();
+    if(!username) return;
+    const key=`${row.user_id}_${row.match_id}`;
+    unique.set(key,{
+      key,
+      userId:row.user_id,
+      username,
+      displayName:profile.display_name||profile.username||'Oyuncu',
+      avatarId:profile.avatar_id||'',
+      matchId:Number(row.match_id),
+      ...mapSupabasePrediction(row)
+    });
+  });
+  return [...unique.values()];
+};
+
+const getDemoVisiblePredictionRows=()=>{
+  const users=demoUsersAdapter.getAll();
+  const rows=[];
+  Object.values(users).forEach(user=>{
+    const preds=demoPredictionsAdapter.getForUser(user.username);
+    Object.entries(preds).forEach(([matchId,pred])=>{
+      if(!pred||typeof pred.h!=='number'||typeof pred.a!=='number') return;
+      rows.push({
+        key:`${user.username}_${matchId}`,
+        userId:user.id||user.userId||user.username,
+        username:user.username,
+        displayName:user.displayName||user.username,
+        avatarId:user.avatarId||'',
+        matchId:Number(matchId),
+        ...pred
+      });
+    });
+  });
+  return rows;
+};
+
+const demoPredictionRevealAdapter={
+  getVisible:()=>getDemoVisiblePredictionRows(),
+  loadVisible:async()=>getDemoVisiblePredictionRows()
+};
+
+let productionVisiblePredictionsCache=[];
+const productionPredictionRevealAdapter={
+  getVisible:()=>productionVisiblePredictionsCache,
+  loadVisible:async()=>{
+    const {session}=await requireSupabaseUser();
+    const [predictionRows,profileRows]=await Promise.all([
+      supabaseFetch('/rest/v1/predictions?select=user_id,match_id,home_score,away_score,created_at,updated_at&order=match_id.asc,user_id.asc',{token:session.access_token}),
+      supabaseFetch('/rest/v1/profiles?select=id,username,display_name,avatar_id&order=username.asc',{token:session.access_token})
+    ]);
+    productionVisiblePredictionsCache=collectVisiblePredictionRows(predictionRows,profileRows);
+    return productionVisiblePredictionsCache;
+  }
+};
+
+const predictionRevealAdapter=isDemoMode()?demoPredictionRevealAdapter:productionPredictionRevealAdapter;
+
 const demoChampionAdapter={
   getForUser:username=>demoStorage.get('champ_'+String(username||'').toLowerCase())||null,
   loadForUser:async username=>demoStorage.get('champ_'+String(username||'').toLowerCase())||null,
@@ -4369,11 +4436,13 @@ function HomeScreen({currentUser,scores,liveSync}){
   const [selectedMatchdayKey,setSelectedMatchdayKey]=useState(null);
   const [selectedUserKey,setSelectedUserKey]=useState(null);
   const [selectedPublicUser,setSelectedPublicUser]=useState(null);
+  const [visiblePredictions,setVisiblePredictions]=useState(()=>predictionRevealAdapter.getVisible());
   useEffect(()=>{const id=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(id)},[]);
 
   const users=usersAdapter.getAll();
 
   const enriched=useMemo(()=>MATCHES.map(m=>({...m,status:getMatchStatus(m,now,scores),ls:getLockState(m,now)})),[now,scores]);
+  const lockedMatchIdsKey=useMemo(()=>enriched.filter(m=>m.ls==='locked'||m.ls==='started').map(m=>m.id).join(','),[enriched]);
   const today=enriched.filter(m=>sameDay(m.utc,now));
   const live=enriched.filter(m=>m.status==='live');
   const upcoming=enriched.filter(m=>m.status==='upcoming');
@@ -4404,6 +4473,18 @@ function HomeScreen({currentUser,scores,liveSync}){
     setSelectedUserKey(key);
     setSelectedPublicUser(null);
   },[]);
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        const rows=await predictionRevealAdapter.loadVisible();
+        if(!cancelled) setVisiblePredictions(rows||[]);
+      }catch(err){
+        if(!cancelled&&isProductionMode()) console.warn('Supabase visible predictions load failed:',safeSupabaseError(err));
+      }
+    })();
+    return()=>{cancelled=true};
+  },[currentUser.username,lockedMatchIdsKey]);
 
   const matchdayRows=useMemo(()=>{
     const activeDay=[...live,...today.filter(m=>m.status!=='live')];
@@ -4479,33 +4560,31 @@ function HomeScreen({currentUser,scores,liveSync}){
   },[selectedUserKey,scores,rankingDayKey,lb]);
 
   const revealedPredFeed=useMemo(()=>{
-    const nowMs=now.getTime();
-    const rows=[];
-    Object.values(users).forEach(u=>{
-      const allPreds=predictionsAdapter.getForUser(u.username);
-      Object.entries(allPreds).forEach(([mid,p])=>{
-        if(!p||typeof p.h!=='number'||typeof p.a!=='number') return;
-        const m=MATCHES.find(x=>String(x.id)===String(mid));
-        if(!m) return;
-        const revealAtMs=new Date(m.utc).getTime()-(59*60000); // lock + 1 dakika
-        if(nowMs<revealAtMs) return;
-        const savedAtRaw=p.savedAt?new Date(p.savedAt).getTime():0;
-        const savedAtMs=Number.isFinite(savedAtRaw)?savedAtRaw:0;
-        rows.push({
-          key:`${u.username}_${m.id}`,
-          username:u.username,
-          displayName:u.displayName,
-          home:m.h,
-          away:m.a,
-          h:p.h,
-          a:p.a,
-          savedAtMs,
-          matchUtcMs:new Date(m.utc).getTime()
-        });
+    const selectedLockedMatchId=selectedMatch&&(selectedMatch.ls==='locked'||selectedMatch.ls==='started')?selectedMatch.id:null;
+    const unique=new Map();
+    visiblePredictions.forEach(p=>{
+      if(!p||typeof p.h!=='number'||typeof p.a!=='number') return;
+      const m=MATCHES.find(x=>String(x.id)===String(p.matchId));
+      if(!m) return;
+      const lockState=getLockState(m,now);
+      if(lockState!=='locked'&&lockState!=='started') return;
+      if(selectedLockedMatchId!=null&&m.id!==selectedLockedMatchId) return;
+      const savedAtRaw=p.savedAt?new Date(p.savedAt).getTime():0;
+      const savedAtMs=Number.isFinite(savedAtRaw)?savedAtRaw:0;
+      unique.set(`${p.userId}_${m.id}`,{
+        key:`${p.userId}_${m.id}`,
+        username:p.username,
+        displayName:p.displayName,
+        home:m.h,
+        away:m.a,
+        h:p.h,
+        a:p.a,
+        savedAtMs,
+        matchUtcMs:new Date(m.utc).getTime()
       });
     });
-    return rows.sort((a,b)=>(b.savedAtMs-a.savedAtMs||b.matchUtcMs-a.matchUtcMs||a.displayName.localeCompare(b.displayName,'tr')));
-  },[users,now]);
+    return [...unique.values()].sort((a,b)=>(b.savedAtMs-a.savedAtMs||b.matchUtcMs-a.matchUtcMs||a.displayName.localeCompare(b.displayName,'tr')));
+  },[visiblePredictions,selectedMatch,now]);
 
   const selectedUser=useMemo(()=>{
     if(!selectedUserKey) return null;
