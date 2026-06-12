@@ -3126,7 +3126,8 @@ const demoChampionAdapter={
   getForUser:username=>demoStorage.get('champ_'+String(username||'').toLowerCase())||null,
   loadForUser:async username=>demoStorage.get('champ_'+String(username||'').toLowerCase())||null,
   saveForUser:(username,team)=>{demoStorage.set('champ_'+String(username||'').toLowerCase(),team);return{ok:true,champion:team}},
-  deleteForUser:async username=>{demoStorage.del('champ_'+String(username||'').toLowerCase());return{ok:true,champion:null}}
+  deleteForUser:async username=>{demoStorage.del('champ_'+String(username||'').toLowerCase());return{ok:true,champion:null}},
+  getOfficialWinner:()=>demoStorage.get('champion_winner')||null
 };
 
 let productionChampionCache={};
@@ -3681,6 +3682,7 @@ async function loadProductionPublicData(){
 const ALL_TEAMS=[...new Set(MATCHES.flatMap(m=>[m.h,m.a]))].filter(t=>!t.startsWith('UEFA')&&!t.startsWith('IC-')).sort((a,b)=>a.localeCompare(b,'tr'));
 const GOLDEN_BOOT_PLAYERS=Array.isArray(window.GOLDEN_BOOT_PLAYERS)?window.GOLDEN_BOOT_PLAYERS:[];
 const GOLDEN_BOOT_OTHER_OPTION='Diğer';
+const CHAMPION_CORRECT_POINTS=5;
 const GOLDEN_BOOT_CORRECT_POINTS=3;
 const TOURNAMENT_FIRST_KICKOFF_UTC='2026-06-11T19:00:00Z';
 const TOURNAMENT_PICK_LOCK_OFFSET_MINUTES=60;
@@ -3737,6 +3739,8 @@ const getLockPct=(m,now)=>{
 
 const outcome=(h,a)=>h===a?'D':h>a?'H':'A';
 const winnerTeam=(m,sc)=>sc.h===sc.a?null:(sc.h>sc.a?m.h:m.a);
+const normalizeChampionTeam=team=>String(team||'').trim().replace(/\s+/g,' ');
+const sameChampionTeam=(a,b)=>normalizeChampionTeam(a).localeCompare(normalizeChampionTeam(b),undefined,{sensitivity:'accent'})===0;
 const ruleScorePoints=(pred,sc)=>{
   if(pred.h!==sc.h||pred.a!==sc.a) return 0;
   if(sc.h===0&&sc.a===0) return 4;
@@ -3762,9 +3766,12 @@ const ruleOutcomePoints=(m,pred,sc)=>{
 const ruleMatchPoints=(m,pred,sc)=>ruleScorePoints(pred,sc)+ruleOutcomePoints(m,pred,sc);
 const isLiveScore=sc=>sc&&sc.status==='live';
 const computeLeaderboard=(users,scores)=>{
+  const officialChampion=championAdapter.getOfficialWinner();
+  const championBonusEnabled=isTournamentPickLocked(new Date());
   const officialGoldenBoot=goldenBootAdapter.getOfficialWinner();
   const rows=Object.values(users).map(u=>{
     const preds=predictionsAdapter.getForUser(u.username);
+    const championPick=championAdapter.getForUser(u.username);
     const goldenBootPick=goldenBootAdapter.getForUser(u.username);
     let confirmed=0,potentialLive=0,st=0,tt=0,playedFinal=0;
     MATCHES.forEach(m=>{
@@ -3781,11 +3788,12 @@ const computeLeaderboard=(users,scores)=>{
         if(outcome(pred.h,pred.a)===outcome(sc.h,sc.a)) tt++;
       }
     });
+    const championPts=championBonusEnabled&&officialChampion&&championPick&&sameChampionTeam(championPick,officialChampion)?CHAMPION_CORRECT_POINTS:0;
     const goldenBootPts=officialGoldenBoot&&goldenBootPick&&sameGoldenBootName(goldenBootPick,officialGoldenBoot)?GOLDEN_BOOT_CORRECT_POINTS:0;
-    confirmed+=goldenBootPts;
+    confirmed+=championPts+goldenBootPts;
     const totalPoints=confirmed+potentialLive;
     const avg=playedFinal?confirmed/playedFinal:0;
-    return{...u,totalPoints,confirmedPts:confirmed,potentialPts:potentialLive,st,tt,avg,played:playedFinal,goldenBootPts};
+    return{...u,totalPoints,confirmedPts:confirmed,potentialPts:potentialLive,st,tt,avg,played:playedFinal,championPts,goldenBootPts};
   });
   return rows.sort((a,b)=>(b.totalPoints-a.totalPoints||b.avg-a.avg||b.st-a.st||b.tt-a.tt||a.displayName.localeCompare(b.displayName,'tr')));
 };
@@ -5063,7 +5071,8 @@ function MyScreen({currentUser,onUserUpdate,scores}){
 
   const totalPreds=Object.keys(preds).length;
   const finishedWithScore=Object.entries(preds).filter(([mid,p])=>scores[mid]&&p.pts!=null);
-  const totalPts=isProductionMode()?productionStats?.totalPoints||0:currentUser.totalPoints||0;
+  const demoStats=isDemoMode()?leaderboardAdapter.getLeaderboard(usersAdapter.getAll(),scores).find(row=>normalizeUserLookupKey(row.username)===normalizeUserLookupKey(currentUser.username)):null;
+  const totalPts=isProductionMode()?productionStats?.totalPoints||0:demoStats?.totalPoints||0;
   const profileScore=isProductionMode()?calculateProfileScoreFromPredictions(preds,scores):Number(currentUser.userScore)||0;
   const correctPreds=isProductionMode()?productionStats?.tt||0:finishedWithScore.filter(([,p])=>p.pts>0).length;
 
