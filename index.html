@@ -2967,20 +2967,33 @@ const demoPredictionsAdapter={
 };
 
 let productionPredictionsCache={};
+const productionPredictionsLoadedKeys=new Set();
+const productionPredictionsInFlight={};
 const productionPredictionsAdapter={
   key:username=>String(username||productionCurrentUser?.username||'').toLowerCase(),
   getForUser:username=>productionPredictionsCache[productionPredictionsAdapter.key(username)]||{},
-  loadForUser:async username=>{
-    const {session,user}=await requireSupabaseUser();
+  loadForUser:async(username,{force=false}={})=>{
     const key=productionPredictionsAdapter.key(username);
-    const rows=await supabaseFetch(`/rest/v1/predictions?user_id=eq.${encodeURIComponent(user.id)}&select=match_id,home_score,away_score,created_at,updated_at&order=match_id.asc`,{token:session.access_token});
-    const preds=(Array.isArray(rows)?rows:[]).reduce((acc,row)=>{
-      if(row.match_id==null) return acc;
-      acc[String(row.match_id)]=mapSupabasePrediction(row);
-      return acc;
-    },{});
-    productionPredictionsCache[key]=preds;
-    return preds;
+    if(!force&&productionPredictionsLoadedKeys.has(key)) return productionPredictionsCache[key]||{};
+    if(!force&&productionPredictionsInFlight[key]) return productionPredictionsInFlight[key];
+    const request=(async()=>{
+      const {session,user}=await requireSupabaseUser();
+      const rows=await supabaseFetch(`/rest/v1/predictions?user_id=eq.${encodeURIComponent(user.id)}&select=match_id,home_score,away_score,created_at,updated_at&order=match_id.asc`,{token:session.access_token});
+      const preds=(Array.isArray(rows)?rows:[]).reduce((acc,row)=>{
+        if(row.match_id==null) return acc;
+        acc[String(row.match_id)]=mapSupabasePrediction(row);
+        return acc;
+      },{});
+      productionPredictionsCache[key]=preds;
+      productionPredictionsLoadedKeys.add(key);
+      return preds;
+    })();
+    productionPredictionsInFlight[key]=request;
+    try{
+      return await request;
+    }finally{
+      if(productionPredictionsInFlight[key]===request) delete productionPredictionsInFlight[key];
+    }
   },
   saveForUser:async(username,preds)=>{
     const entries=Object.entries(preds||{});
@@ -3018,6 +3031,7 @@ const productionPredictionsAdapter={
         });
       const saved=Array.isArray(rows)&&rows[0]?mapSupabasePrediction(rows[0]):{...pred,savedAt:new Date().toISOString()};
       productionPredictionsCache[key]={...(productionPredictionsCache[key]||{}),[String(matchId)]:saved};
+      productionPredictionsLoadedKeys.add(key);
       return{ok:true,preds:productionPredictionsCache[key]};
     }catch(err){
       return{ok:false,error:friendlySupabaseWriteError(err)};
@@ -3034,6 +3048,7 @@ const productionPredictionsAdapter={
       const next={...(productionPredictionsCache[key]||{})};
       delete next[String(matchId)];
       productionPredictionsCache[key]=next;
+      productionPredictionsLoadedKeys.add(key);
       return{ok:true,preds:next};
     }catch(err){
       return{ok:false,error:friendlySupabaseWriteError(err)};
@@ -5305,8 +5320,12 @@ function PredictionCard({m,pred,score,now,onSave}){
   const isLiveScoreboard=score&&score.status==='live';
   const isFinished=score!=null&&!isLiveScoreboard;
 
-  // Auto-update inputs when pred changes from outside
-  useEffect(()=>{if(pred&&!dirty){setHVal(String(pred.h));setAVal(String(pred.a))}},[]); // eslint-disable-line
+  // Hydrate async owner predictions without overwriting an in-progress edit.
+  useEffect(()=>{
+    if(dirty) return;
+    setHVal(pred?String(pred.h):'');
+    setAVal(pred?String(pred.a):'');
+  },[pred?.h,pred?.a,dirty,m.id]);
 
   const stateClass=ls==='open'?'state-open':ls==='warn'?'state-warn':locked?'state-locked':'state-finished';
   const psbClass=ls==='open'?'psb-open':ls==='warn'?'psb-warn':'psb-locked';
@@ -5566,6 +5585,19 @@ function RulesScreen(){
 function App(){
   const [user,setUser]=useState(undefined);
   const [bootMsg,setBootMsg]=useState(null);
+  const hydrateAuthenticatedUser=async current=>{
+    if(!current||!isProductionMode()) return current;
+    try{
+      await predictionsAdapter.loadForUser(current.username,{force:true});
+    }catch(err){
+      console.warn('Initial owner predictions load failed:',safeSupabaseError(err));
+    }
+    return current;
+  };
+  const completeLogin=async current=>{
+    const hydrated=await hydrateAuthenticatedUser(current);
+    setUser(hydrated);
+  };
   useEffect(()=>{
     let cancelled=false;
     (async()=>{
@@ -5575,7 +5607,7 @@ function App(){
       }
       try{
         if(isDemoMode()) ensureMertAdmin();
-        const current=await authAdapter.getCurrentUser();
+        const current=await hydrateAuthenticatedUser(await authAdapter.getCurrentUser());
         if(!cancelled) setUser(current);
       }catch(err){
         if(!cancelled){setBootMsg({text:safeSupabaseError(err),type:'error'});setUser(null);}
@@ -5585,7 +5617,7 @@ function App(){
   },[]);
   if(isProductionMode()&&!hasSupabaseConfig()) return<ProductionModeNotice/>;
   if(user===undefined)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg0)',flexDirection:'column',gap:16}}><div style={{fontSize:48,animation:'spin 1.2s linear infinite'}}></div><style>{'@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}'}</style><div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:'.2em',color:'var(--tm)'}}>YÜKLENİYOR...</div></div>;
-  if(!user)return<AuthScreen onLogin={setUser} initialMsg={bootMsg}/>;
+  if(!user)return<AuthScreen onLogin={completeLogin} initialMsg={bootMsg}/>;
   return<ToastProvider><MainApp currentUser={user} onLogout={()=>setUser(null)}/></ToastProvider>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
