@@ -1,0 +1,93 @@
+name: sync-finished-scores
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Run as a dry-run or perform finished-score writes
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - write
+  schedule:
+    - cron: "7,37 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wc2026-finished-score-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Determine execution mode
+        id: mode
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_MODE: ${{ inputs.mode }}
+          SCHEDULE_ENABLED: ${{ vars.FINISHED_SCORE_SYNC_ENABLED }}
+        run: |
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
+            if [[ "$SCHEDULE_ENABLED" != "true" ]]; then
+              echo "Scheduled finished-score sync is disabled."
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "dry_run=0" >> "$GITHUB_OUTPUT"
+            echo "Scheduled finished-score sync is enabled."
+            exit 0
+          fi
+
+          case "$DISPATCH_MODE" in
+            dry-run)
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+              echo "dry_run=1" >> "$GITHUB_OUTPUT"
+              ;;
+            write)
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+              echo "dry_run=0" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported workflow mode: $DISPATCH_MODE"
+              exit 1
+              ;;
+          esac
+
+      - name: Check out repository
+        if: steps.mode.outputs.should_run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.mode.outputs.should_run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install server dependencies
+        if: steps.mode.outputs.should_run == 'true'
+        working-directory: server
+        shell: bash
+        run: npm install --omit=dev --no-audit --no-fund
+
+      - name: Sync finished scores
+        if: steps.mode.outputs.should_run == 'true'
+        shell: bash
+        env:
+          SCORE_PROVIDER: football-data
+          FOOTBALL_DATA_COMPETITION: WC
+          FOOTBALL_DATA_SEASON: "2026"
+          DRY_RUN: ${{ steps.mode.outputs.dry_run }}
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node server/update-scores.js

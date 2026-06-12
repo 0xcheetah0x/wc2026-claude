@@ -10,7 +10,8 @@
  * - API-Football mock fixtures remain enabled while dry-run is active unless
  *   explicitly disabled
  *
- * football-data.org is currently supported for read-only dry-run validation.
+ * football-data.org supports finished-score writes only. Live writes remain
+ * disabled until live payload validation is complete.
  */
 
 const fs = require("fs");
@@ -165,12 +166,6 @@ function validateConfig(config) {
     throw new ConfigError("FOOTBALL_DATA_SEASON must be a four-digit year.");
   }
 
-  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER && !config.dryRun) {
-    throw new ConfigError(
-      "football-data Supabase writes are not enabled yet. Use DRY_RUN=1."
-    );
-  }
-
   if (!config.discoverFixtures && !config.discoverLeagues && !config.dryRun) {
     const missing = [];
     if (!config.supabaseUrl) missing.push("SUPABASE_URL");
@@ -217,8 +212,11 @@ Examples:
   Future league discovery, never writes to Supabase:
     DISCOVER_LEAGUES=1 MOCK_FIXTURES=0 LEAGUE_SEARCH="World Cup" node server/update-scores.js
 
-  Future real write, later and dangerous until mappings are reviewed:
+  API-Football real write:
     DRY_RUN=0 MOCK_FIXTURES=0 MATCH_DATE=2026-06-11 node server/update-scores.js
+
+  football-data finished-score write (live writes remain disabled):
+    SCORE_PROVIDER=football-data DRY_RUN=0 MATCH_DATE=2026-06-11 node server/update-scores.js
 
 Server-only env vars:
   SCORE_PROVIDER
@@ -663,12 +661,19 @@ function normalizeFixtureScore(fixture, internalMatch) {
     };
   }
 
+  if (status === "live") {
+    return {
+      row: null,
+      reason: "Live football-data writes remain disabled until live payload validation passes."
+    };
+  }
+
   const homeScore = optionalClampedInt(fixture?.goals?.home, 0, 20);
   const awayScore = optionalClampedInt(fixture?.goals?.away, 0, 20);
   if (homeScore === null || awayScore === null) {
     return {
       row: null,
-      reason: `${status === "live" ? "Live" : "Finished"} fixture is missing a full-time score.`
+      reason: "Finished fixture is missing full-time score; retry on next run."
     };
   }
 
@@ -1205,6 +1210,9 @@ function printScoreReport(context) {
   log(`Provider request budget before: ${budgetLine(budgetBefore)}`);
   log(`Provider request budget after: ${budgetLine(budgetAfter)}${config.mockFixtures ? " (mock mode did not touch budget file)" : ""}`);
   log(`Supabase writes: ${config.dryRun ? "skipped because DRY_RUN=1" : "enabled"}`);
+  if (config.scoreProvider === FOOTBALL_DATA_PROVIDER) {
+    log("football-data write scope: finished scores only; live writes remain disabled.");
+  }
 
   if (report.providerFixturesFetched === 0 && !config.mockFixtures) {
     printZeroFixtureGuidance(config);
@@ -1399,6 +1407,155 @@ async function upsertScoresToSupabase(rows, config) {
   return { written: rows.length };
 }
 
+async function fetchExistingScoresFromSupabase(rows, config) {
+  const matchIds = Array.from(
+    new Set(rows.map((row) => Number(row.match_id)).filter(Number.isInteger))
+  ).sort((a, b) => a - b);
+  if (!matchIds.length) return [];
+
+  const baseUrl = config.supabaseUrl.replace(/\/$/, "");
+  const params = new URLSearchParams({
+    select: "match_id,home_score,away_score,status,minute",
+    match_id: `in.(${matchIds.join(",")})`
+  });
+  const response = await fetch(`${baseUrl}/rest/v1/scores?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      apikey: config.supabaseServiceRoleKey,
+      Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+      Accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Supabase existing-score read failed with status ${response.status}: ${body.slice(0, 300)}`
+    );
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new Error("Supabase existing-score read returned an unexpected payload.");
+  }
+  return payload;
+}
+
+function reconcileFootballDataFinishedRows(providerRows, existingRows) {
+  const existingByMatchId = new Map(
+    existingRows.map((row) => [Number(row.match_id), row])
+  );
+  const rowsToWrite = [];
+  const actions = [];
+
+  for (const row of providerRows) {
+    const matchId = Number(row.match_id);
+    const validHomeScore =
+      Number.isInteger(row.home_score) && row.home_score >= 0 && row.home_score <= 20;
+    const validAwayScore =
+      Number.isInteger(row.away_score) && row.away_score >= 0 && row.away_score <= 20;
+    if (
+      !Number.isInteger(matchId) ||
+      row.status !== "finished" ||
+      !validHomeScore ||
+      !validAwayScore
+    ) {
+      actions.push({
+        action: "skipped",
+        match_id: matchId,
+        reason: "Only valid finished football-data rows may be written."
+      });
+      continue;
+    }
+
+    const finishedRow = {
+      match_id: matchId,
+      home_score: row.home_score,
+      away_score: row.away_score,
+      status: "finished",
+      minute:
+        Number.isInteger(row.minute) && row.minute >= 0 && row.minute <= 130
+          ? row.minute
+          : 90
+    };
+    const existing = existingByMatchId.get(matchId);
+    if (!existing) {
+      rowsToWrite.push(finishedRow);
+      actions.push({ action: "inserted", match_id: matchId, row: finishedRow });
+      continue;
+    }
+
+    const unchanged =
+      String(existing.status || "").toLowerCase() === "finished" &&
+      Number(existing.home_score) === finishedRow.home_score &&
+      Number(existing.away_score) === finishedRow.away_score;
+    if (unchanged) {
+      actions.push({
+        action: "unchanged",
+        match_id: matchId,
+        row: finishedRow,
+        existing
+      });
+      continue;
+    }
+
+    rowsToWrite.push(finishedRow);
+    actions.push({
+      action: "corrected",
+      match_id: matchId,
+      row: finishedRow,
+      existing
+    });
+  }
+
+  return { rowsToWrite, actions };
+}
+
+function logFootballDataSyncActions(actions) {
+  for (const item of actions) {
+    if (item.action === "inserted") {
+      log(
+        `Match ${item.match_id}: inserted finished score ${item.row.home_score}-${item.row.away_score}.`
+      );
+    } else if (item.action === "unchanged") {
+      log(
+        `Match ${item.match_id}: unchanged/idempotent finished score ${item.row.home_score}-${item.row.away_score}.`
+      );
+    } else if (item.action === "corrected") {
+      const oldScore = `${item.existing.home_score}-${item.existing.away_score}`;
+      const oldStatus = item.existing.status || "unknown";
+      log(
+        `Match ${item.match_id}: corrected existing ${oldStatus} score ${oldScore} to finished ${item.row.home_score}-${item.row.away_score}.`
+      );
+    } else {
+      warn(`Match ${item.match_id}: skipped. ${item.reason}`);
+    }
+  }
+}
+
+async function syncFootballDataFinishedScores(rows, config) {
+  if (!rows.length) {
+    log("No finished football-data score rows to reconcile.");
+    return { written: 0, inserted: 0, unchanged: 0, corrected: 0, skipped: 0 };
+  }
+
+  const existingRows = await fetchExistingScoresFromSupabase(rows, config);
+  const reconciliation = reconcileFootballDataFinishedRows(rows, existingRows);
+  const writeResult = await upsertScoresToSupabase(
+    reconciliation.rowsToWrite,
+    config
+  );
+  logFootballDataSyncActions(reconciliation.actions);
+
+  return {
+    written: writeResult.written,
+    inserted: reconciliation.actions.filter((item) => item.action === "inserted").length,
+    unchanged: reconciliation.actions.filter((item) => item.action === "unchanged").length,
+    corrected: reconciliation.actions.filter((item) => item.action === "corrected").length,
+    skipped: reconciliation.actions.filter((item) => item.action === "skipped").length
+  };
+}
+
 async function main() {
   const config = readConfig();
   if (config.help) {
@@ -1457,7 +1614,10 @@ async function main() {
   }
 
   printScoreReport({ config, matchesToCheck, fetchResult, plan, budgetBefore, budgetAfter });
-  const result = await upsertScoresToSupabase(plan.rows, config);
+  const result =
+    config.scoreProvider === FOOTBALL_DATA_PROVIDER && !config.dryRun
+      ? await syncFootballDataFinishedScores(plan.rows, config)
+      : await upsertScoresToSupabase(plan.rows, config);
   return { ok: true, rows: plan.rows, report: plan.report, result };
 }
 
@@ -1488,10 +1648,12 @@ module.exports = {
   main,
   mapFixtureToInternalMatch,
   mapStatus,
+  normalizeFixtureScore,
   normalizeTeamName,
   printDiscoveryReport,
   printHelp,
   printLeagueDiscoveryReport,
   readConfig,
+  reconcileFootballDataFinishedRows,
   selectMatchesToCheck
 };
