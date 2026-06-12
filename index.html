@@ -1879,16 +1879,21 @@ body{
 .home-fm .form-dots{
   display:flex;
   align-items:center;
+  flex-wrap:wrap;
   gap:3px;
+  min-width:0;
 }
-.home-fm .form-dots i{
+.home-fm .form-dot{
+  display:block;
+  flex:0 0 auto;
   width:7px;
   height:7px;
   border-radius:50%;
   background:#334155;
 }
-.home-fm .form-dots i.ok{background:#22c55e}
-.home-fm .form-dots i.bad{background:#ef4444}
+.home-fm .form-dot.exact{background:#22c55e}
+.home-fm .form-dot.outcome{background:#3b82f6}
+.home-fm .form-dot.miss{background:#ef4444}
 
 .home-fm .insights-list{margin-top:8px}
 .home-fm .insight-item{
@@ -4592,7 +4597,9 @@ function HomeScreen({currentUser,scores,liveSync}){
   const rankingDayKey=matchdayRows[0]?fmtDateKey(matchdayRows[0].utc):null;
   const topDailyRanking=useMemo(()=>{
     if(!rankingDayKey) return [];
-    const dayMatches=MATCHES.filter(m=>fmtDateKey(m.utc)===rankingDayKey);
+    const dayMatches=MATCHES
+      .filter(m=>fmtDateKey(m.utc)===rankingDayKey)
+      .sort((a,b)=>new Date(a.utc)-new Date(b.utc));
     const rankingUsers=isProductionMode()?lb:Object.values(users);
     const productionPredictionsByUser=isProductionMode()?visiblePredictions.reduce((acc,p)=>{
       if(!p?.username||p.matchId==null) return acc;
@@ -4605,21 +4612,46 @@ function HomeScreen({currentUser,scores,liveSync}){
       const preds=isProductionMode()
         ?productionPredictionsByUser[normalizeUserLookupKey(u.username)]||{}
         :predictionsAdapter.getForUser(u.username);
-      let dayPts=0,exact=0,correct=0,played=0;
+      let dailyPoints=0,dailyExactScores=0,dailyCorrectOutcomes=0;
+      const formDots=[];
       dayMatches.forEach(m=>{
         const pred=preds[m.id];
         const sc=scores[m.id];
         if(!pred||!isFinalScoreForUserProfile(sc)) return;
-        played++;
-        const p=ruleMatchPoints(m,pred,sc);
-        dayPts+=p;
-        if(pred.h===sc.h&&pred.a===sc.a) exact++;
-        if(outcome(pred.h,pred.a)===outcome(sc.h,sc.a)) correct++;
+        dailyPoints+=ruleMatchPoints(m,pred,sc);
+        const isExact=pred.h===sc.h&&pred.a===sc.a;
+        const isCorrectOutcome=outcome(pred.h,pred.a)===outcome(sc.h,sc.a);
+        if(isExact){
+          dailyExactScores++;
+          dailyCorrectOutcomes++;
+          formDots.push({matchId:m.id,type:'exact',label:'Doğru skor'});
+        }else if(isCorrectOutcome){
+          dailyCorrectOutcomes++;
+          formDots.push({matchId:m.id,type:'outcome',label:'Doğru taraf'});
+        }else{
+          formDots.push({matchId:m.id,type:'miss',label:'İsabetsiz'});
+        }
       });
-      const form=played?Math.round((correct/played)*100):0;
-      return{...u,dayPts,exact,correct,played,form};
+      const evaluatedPredictionCount=formDots.length;
+      return{
+        ...u,
+        dailyPoints,
+        dailyExactScores,
+        dailyCorrectOutcomes,
+        evaluatedPredictionCount,
+        formDots,
+        dayPts:dailyPoints,
+        exact:dailyExactScores,
+        correct:dailyCorrectOutcomes,
+        played:evaluatedPredictionCount
+      };
     });
-    return rows.sort((a,b)=>(b.dayPts-a.dayPts||b.exact-a.exact||b.correct-a.correct||a.displayName.localeCompare(b.displayName,'tr'))).slice(0,3);
+    return rows.sort((a,b)=>(
+      b.dailyPoints-a.dailyPoints
+      ||b.dailyExactScores-a.dailyExactScores
+      ||b.dailyCorrectOutcomes-a.dailyCorrectOutcomes
+      ||a.displayName.localeCompare(b.displayName,'tr')
+    )).slice(0,3);
   },[rankingDayKey,users,scores,lb,visiblePredictions]);
 
   useEffect(()=>{
@@ -4897,12 +4929,15 @@ function HomeScreen({currentUser,scores,liveSync}){
           {topDailyRanking.map((u,i)=><div key={u.username} className="standings-row">
             <span>{i+1}</span>
             <button type="button" className="user-link-btn truncate" onClick={()=>openUserProfile(u.username)}>{u.displayName}</button>
-            <span className="mono">{u.dayPts||0}</span>
-            {u.played>0
+            <span className="mono">{u.dailyPoints||0}</span>
+            {u.formDots.length>0
               ?<span className="form-dots">
-                <i className={u.form>=60?'ok':'bad'}/>
-                <i className={u.form>=40?'ok':'bad'}/>
-                <i className={u.form>=20?'ok':'bad'}/>
+                {u.formDots.map(dot=><i
+                  key={dot.matchId}
+                  className={`form-dot ${dot.type}`}
+                  title={dot.label}
+                  aria-label={dot.label}
+                />)}
               </span>
               :<span className="mono" style={{color:'var(--tm)'}}>-</span>}
           </div>)}
