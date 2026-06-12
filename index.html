@@ -3282,17 +3282,19 @@ const demoScoresAdapter={
   loadScores:async()=>S.get('scores')||{}
 };
 
+let productionScoresCache={};
 const productionScoresAdapter={
-  getScores:()=>({}),
+  getScores:()=>productionScoresCache,
   saveScores:()=>{},
   loadScores:async()=>{
     const rows=await supabaseRead('scores','select=match_id,home_score,away_score,status,minute&order=match_id.asc');
-    return rows.reduce((acc,row)=>{
+    productionScoresCache=rows.reduce((acc,row)=>{
       if(row.match_id==null) return acc;
       if((row.status||'upcoming')==='upcoming') return acc;
       acc[String(row.match_id)]=mapSupabaseScore(row);
       return acc;
     },{});
+    return productionScoresCache;
   }
 };
 
@@ -3852,7 +3854,7 @@ function calculateDayPointsFromPredictions(preds,scores,dayKey){
     .reduce((sum,m)=>{
       const pred=preds[String(m.id)]||preds[m.id];
       const sc=scores[m.id];
-      if(!pred||!sc||typeof sc.h!=='number'||typeof sc.a!=='number') return sum;
+      if(!pred||!isFinalScoreForUserProfile(sc)) return sum;
       return sum+ruleMatchPoints(m,pred,sc);
     },0);
 }
@@ -3922,7 +3924,13 @@ async function fetchLiveScoresOverlay(base){
     if(!r.ok) return{ scores:base, response:null };
     const j=await r.json();
     if(!j||!j.scores) return{ scores:base, response:j||null };
-    return{ scores:{...base,...j.scores}, response:j };
+    const scores={...base};
+    Object.entries(j.scores).forEach(([matchId,overlayScore])=>{
+      const storedScore=base?.[matchId];
+      const storedFinished=storedScore&&(storedScore.status==='finished'||storedScore.status==='ft');
+      if(!storedFinished) scores[matchId]=overlayScore;
+    });
+    return{ scores, response:j };
   }catch(_){ return{ scores:base, response:null }; }
 }
 
@@ -4033,8 +4041,7 @@ function migrateUserScoreFields(){
 
 function isFinalScoreForUserProfile(sc){
   if(!sc||typeof sc.h!=='number'||typeof sc.a!=='number') return false;
-  if(sc.status==='live') return false;
-  return true;
+  return sc.status==='finished'||sc.status==='ft';
 }
 
 function sumBreakdown(b){
@@ -4319,33 +4326,31 @@ function MainApp({currentUser,onLogout}){
     let cancelled=false;
     let timer=null;
     const tick=async()=>{
-      const base=scoresAdapter.getScores();
-      const result=await fetchLiveScoresOverlay(base);
-      const merged=result.scores;
-      if(cancelled) return;
-      setScores(merged);
-      scoresAdapter.saveScores(merged);
-      setLiveSync({ ok:result.response?result.response.ok!==false:true, last:new Date().toISOString() });
-      const delay=getLiveScoreRefreshDelay(merged,new Date(),result.response);
-      timer=setTimeout(tick,delay);
+      try{
+        const publicData=isProductionMode()?await loadProductionPublicData():null;
+        const base=publicData?.scores||scoresAdapter.getScores();
+        if(isProductionMode()&&!cancelled){
+          setScores(base);
+          setLiveSync({ ok:true, last:new Date().toISOString() });
+        }
+        const result=await fetchLiveScoresOverlay(base);
+        const merged=result.scores;
+        if(cancelled) return;
+        setScores(merged);
+        scoresAdapter.saveScores(merged);
+        setLiveSync({ ok:result.response?result.response.ok!==false:true, last:new Date().toISOString() });
+        const calculatedDelay=getLiveScoreRefreshDelay(merged,new Date(),result.response);
+        const delay=isProductionMode()?Math.min(calculatedDelay,60000):calculatedDelay;
+        timer=setTimeout(tick,delay);
+      }catch(err){
+        if(cancelled) return;
+        if(isProductionMode()) console.warn('Supabase score refresh failed:',safeSupabaseError(err));
+        setLiveSync({ ok:false, last:new Date().toISOString() });
+        timer=setTimeout(tick,isProductionMode()?60000:5*60000);
+      }
     };
     tick();
     return()=>{cancelled=true;if(timer)clearTimeout(timer);};
-  },[]);
-  useEffect(()=>{
-    if(!isProductionMode()) return;
-    let cancelled=false;
-    (async()=>{
-      try{
-        const data=await loadProductionPublicData();
-        if(cancelled) return;
-        setScores(data.scores);
-        setLiveSync({ ok:true, last:new Date().toISOString() });
-      }catch(err){
-        console.warn('Supabase public data load failed:',safeSupabaseError(err));
-      }
-    })();
-    return()=>{cancelled=true};
   },[]);
 
   const MENU=[
@@ -4503,13 +4508,23 @@ function HomeScreen({currentUser,scores,liveSync}){
   const topDailyRanking=useMemo(()=>{
     if(!rankingDayKey) return [];
     const dayMatches=MATCHES.filter(m=>fmtDateKey(m.utc)===rankingDayKey);
-    const rows=Object.values(users).map(u=>{
-      const preds=predictionsAdapter.getForUser(u.username);
+    const rankingUsers=isProductionMode()?lb:Object.values(users);
+    const productionPredictionsByUser=isProductionMode()?visiblePredictions.reduce((acc,p)=>{
+      if(!p?.username||p.matchId==null) return acc;
+      const key=normalizeUserLookupKey(p.username);
+      acc[key]=acc[key]||{};
+      acc[key][String(p.matchId)]={h:p.h,a:p.a,savedAt:p.savedAt};
+      return acc;
+    },{}):null;
+    const rows=rankingUsers.map(u=>{
+      const preds=isProductionMode()
+        ?productionPredictionsByUser[normalizeUserLookupKey(u.username)]||{}
+        :predictionsAdapter.getForUser(u.username);
       let dayPts=0,exact=0,correct=0,played=0;
       dayMatches.forEach(m=>{
         const pred=preds[m.id];
         const sc=scores[m.id];
-        if(!pred||!sc||typeof sc.h!=='number'||typeof sc.a!=='number') return;
+        if(!pred||!isFinalScoreForUserProfile(sc)) return;
         played++;
         const p=ruleMatchPoints(m,pred,sc);
         dayPts+=p;
@@ -4520,7 +4535,7 @@ function HomeScreen({currentUser,scores,liveSync}){
       return{...u,dayPts,exact,correct,played,form};
     });
     return rows.sort((a,b)=>(b.dayPts-a.dayPts||b.exact-a.exact||b.correct-a.correct||a.displayName.localeCompare(b.displayName,'tr'))).slice(0,3);
-  },[rankingDayKey,users,scores]);
+  },[rankingDayKey,users,scores,lb,visiblePredictions]);
 
   useEffect(()=>{
     if(selectedMatchId==null) return;
@@ -4600,9 +4615,9 @@ function HomeScreen({currentUser,scores,liveSync}){
       username:selectedPublicUser?.username||lbRow.username||base.username,
       displayName:selectedPublicUser?.displayName||lbRow.displayName||base.displayName,
       avatarId:selectedPublicUser?.avatarId??base.avatarId??lbRow.avatarId??'',
-      totalPoints:selectedPublicUser?.totalPoints??lbRow.totalPoints??base.totalPoints??0,
-      st:selectedPublicUser?.st??lbRow.st??base.st??0,
-      tt:selectedPublicUser?.tt??lbRow.tt??base.tt??0,
+      totalPoints:lbRow.totalPoints??selectedPublicUser?.totalPoints??base.totalPoints??0,
+      st:lbRow.st??selectedPublicUser?.st??base.st??0,
+      tt:lbRow.tt??selectedPublicUser?.tt??base.tt??0,
       avg,
       cp:selectedPublicUser?.cp??formatProfileAverage(avg),
       dayPts:selectedPublicUser?.dayPts??dayRow.dayPts??base.dayPts??0,
@@ -4938,6 +4953,7 @@ function MyScreen({currentUser,onUserUpdate,scores}){
   const [preds,setPreds]=useState(()=>predictionsAdapter.getForUser(currentUser.username));
   const [champion,setChampion]=useState(()=>championAdapter.getForUser(currentUser.username));
   const [goldenBoot,setGoldenBoot]=useState(()=>goldenBootAdapter.getForUser(currentUser.username));
+  const [productionStats,setProductionStats]=useState(null);
   const [avatarOpen,setAvatarOpen]=useState(false);
   const [avatarPreviewError,setAvatarPreviewError]=useState(false);
   const toast=useToast();
@@ -4966,6 +4982,20 @@ function MyScreen({currentUser,onUserUpdate,scores}){
     })();
     return()=>{cancelled=true};
   },[currentUser.username]);
+  useEffect(()=>{
+    if(!isProductionMode()) return;
+    let cancelled=false;
+    (async()=>{
+      try{
+        const rows=await leaderboardAdapter.loadLeaderboard();
+        const stats=rows.find(row=>normalizeUserLookupKey(row.username)===normalizeUserLookupKey(currentUser.username))||null;
+        if(!cancelled) setProductionStats(stats);
+      }catch(err){
+        if(!cancelled) console.warn('Supabase current user stats load failed:',safeSupabaseError(err));
+      }
+    })();
+    return()=>{cancelled=true};
+  },[currentUser.username,scores]);
   const enriched=useMemo(()=>MATCHES.map(m=>({...m,status:getMatchStatus(m,now,scores),ls:getLockState(m,now),lockPct:getLockPct(m,now)})),[now,scores]);
 
   const savePred=async(matchId,h,a)=>{
@@ -5024,8 +5054,9 @@ function MyScreen({currentUser,onUserUpdate,scores}){
 
   const totalPreds=Object.keys(preds).length;
   const finishedWithScore=Object.entries(preds).filter(([mid,p])=>scores[mid]&&p.pts!=null);
-  const totalPts=currentUser.totalPoints||0;
-  const correctPreds=finishedWithScore.filter(([,p])=>p.pts>0).length;
+  const totalPts=isProductionMode()?productionStats?.totalPoints||0:currentUser.totalPoints||0;
+  const profileScore=isProductionMode()?calculateProfileScoreFromPredictions(preds,scores):Number(currentUser.userScore)||0;
+  const correctPreds=isProductionMode()?productionStats?.tt||0:finishedWithScore.filter(([,p])=>p.pts>0).length;
 
   const openMatches=enriched.filter(m=>m.ls==='open'||m.ls==='warn');
   const lockedFinished=enriched.filter(m=>m.ls==='locked'||m.ls==='started'||m.status==='finished');
@@ -5085,7 +5116,7 @@ function MyScreen({currentUser,onUserUpdate,scores}){
     </section>}
 
     <div className="my-stats-grid">
-      <div className="my-stat"><span>PROFİL SKORU</span><strong>{Number(currentUser.userScore)||0}</strong><small>Tüm turnuvalar</small></div>
+      <div className="my-stat"><span>PROFİL SKORU</span><strong>{profileScore}</strong><small>Tüm turnuvalar</small></div>
       <div className="my-stat"><span>TOPLAM PUAN</span><strong>{totalPts}</strong><small>Lig puanı</small></div>
       <div className="my-stat"><span>TAHMİN ORANI</span><strong>{predictRate}%</strong><small>{totalPreds}/{MATCHES.length}</small></div>
       <div className="my-stat"><span>İSABETLİ</span><strong>{correctPreds}</strong><small>Skorlanan maçlar</small></div>
