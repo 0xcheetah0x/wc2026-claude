@@ -1618,6 +1618,9 @@ body{
   font-size:10px;
   letter-spacing:.04em;
 }
+.home-fm button.pred-feed-user-tag--saygin{color:#fb923c}
+.home-fm button.pred-feed-user-tag--erkan{color:#60a5fa}
+.home-fm button.pred-feed-user-tag--mert{color:#22c55e}
 
 .home-fm .standings-table{
   margin-top:8px;
@@ -3907,6 +3910,15 @@ const productionLeaderboardAdapter={
 const leaderboardAdapter=isDemoMode()?demoLeaderboardAdapter:productionLeaderboardAdapter;
 
 const normalizeUserLookupKey=v=>String(v||'').trim().toLowerCase();
+const predictionFeedUserColorClass=(username,displayName)=>{
+  const identities=[username,displayName]
+    .map(v=>String(v||'').trim().toLocaleLowerCase('tr-TR').replaceAll('ı','i'))
+    .filter(Boolean);
+  if(identities.includes('saygin')) return 'pred-feed-user-tag--saygin';
+  if(identities.some(v=>v==='erkandez'||v==='erkan')) return 'pred-feed-user-tag--erkan';
+  if(identities.includes('mert')) return 'pred-feed-user-tag--mert';
+  return '';
+};
 const formatProfileAverage=v=>{
   const n=Number(v)||0;
   return Number.isInteger(n)?n:Number(n.toFixed(1));
@@ -4985,7 +4997,7 @@ function HomeScreen({currentUser,scores,liveSync}){
           <div className="pred-feed-list">
             {revealedPredFeed.map(u=><div key={u.key} className="pred-feed-row">
               <span className="pred-feed-line">
-                {u.home} <span className="pred-feed-score-inline">{u.h} - {u.a}</span> {u.away} <button type="button" className="pred-feed-user-tag" onClick={()=>openUserProfile(u.username)}>({(u.displayName||u.username||'').toUpperCase()})</button>
+                {u.home} <span className="pred-feed-score-inline">{u.h} - {u.a}</span> {u.away} <button type="button" className={['pred-feed-user-tag',predictionFeedUserColorClass(u.username,u.displayName)].filter(Boolean).join(' ')} onClick={()=>openUserProfile(u.username)}>({(u.displayName||u.username||'').toUpperCase()})</button>
               </span>
             </div>)}
             {revealedPredFeed.length===0&&<div className="recap-empty">Kilit sonrası görülebilir skor tahmini henüz yok.</div>}
