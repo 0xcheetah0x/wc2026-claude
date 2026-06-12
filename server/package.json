@@ -8,6 +8,7 @@
     "start": "node live-server.js",
     "set-score": "node set-score.js",
     "check:football-data": "node check-football-data.js",
+    "validate:edge-fixture-map": "node validate-edge-function-fixture-map.js",
     "update:scores:football-data:dry-run": "node -e \"process.env.SCORE_PROVIDER='football-data';process.env.DRY_RUN='1';const u=require('./update-scores');delete process.env.MATCH_DATE;u.main().catch(u.handleCliError)\"",
     "update:scores:mock": "node -e \"process.env.SCORE_PROVIDER='api-football';process.env.DRY_RUN='1';process.env.MOCK_FIXTURES='1';const u=require('./update-scores');u.main().catch(u.handleCliError)\""
   },

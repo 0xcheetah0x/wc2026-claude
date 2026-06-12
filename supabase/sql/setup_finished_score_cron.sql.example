@@ -1,0 +1,95 @@
+-- WC2026 finished-score cron setup template
+--
+-- This file is intentionally non-executable: every SQL statement is
+-- commented out. Replace every REPLACE_* placeholder, review the result, and
+-- run statements individually in the Supabase SQL Editor only after the Edge
+-- Function has passed manual dry-run and controlled-write verification.
+--
+-- 1. Enable the required extensions.
+--
+-- create extension if not exists pg_cron with schema pg_catalog;
+-- create extension if not exists pg_net with schema extensions;
+--
+-- 2. Store the full Edge Function URL in Supabase Vault.
+--    Example shape:
+--    https://REPLACE_PROJECT_REF.supabase.co/functions/v1/sync-finished-scores
+--
+-- select vault.create_secret(
+--   'https://REPLACE_PROJECT_REF.supabase.co/functions/v1/sync-finished-scores',
+--   'wc2026_finished_score_function_url',
+--   'Private URL used by the WC2026 finished-score cron job'
+-- );
+--
+-- 3. Store the same private header secret configured as WC2026_CRON_SECRET
+--    for the Edge Function. Generate a strong independent value. Do not use a
+--    service-role key, football-data token, or user password.
+--
+-- select vault.create_secret(
+--   'REPLACE_WITH_STRONG_RANDOM_CRON_SECRET',
+--   'wc2026_finished_score_cron_secret',
+--   'Private x-wc2026-cron-secret header value'
+-- );
+--
+-- 4. Confirm the required Vault entries exist without selecting decrypted
+--    secret values.
+--
+-- select id, name, description, created_at, updated_at
+-- from vault.secrets
+-- where name in (
+--   'wc2026_finished_score_function_url',
+--   'wc2026_finished_score_cron_secret'
+-- )
+-- order by name;
+--
+-- 5. Schedule one POST at minute 7 and minute 37 of every hour.
+--    The Edge Function still requires FINISHED_SCORE_SYNC_ENABLED=true before
+--    this body can cause a write.
+--
+-- select cron.schedule(
+--   'wc2026-finished-score-sync',
+--   '7,37 * * * *',
+--   $cron$
+--   select net.http_post(
+--     url := (
+--       select decrypted_secret
+--       from vault.decrypted_secrets
+--       where name = 'wc2026_finished_score_function_url'
+--     ),
+--     headers := jsonb_build_object(
+--       'Content-Type',
+--       'application/json',
+--       'x-wc2026-cron-secret',
+--       (
+--         select decrypted_secret
+--         from vault.decrypted_secrets
+--         where name = 'wc2026_finished_score_cron_secret'
+--       )
+--     ),
+--     body := '{"dryRun":false}'::jsonb
+--   ) as request_id;
+--   $cron$
+-- );
+--
+-- 6. Inspect configured jobs and recent execution history.
+--
+-- select jobid, schedule, command, active, jobname
+-- from cron.job
+-- where jobname = 'wc2026-finished-score-sync';
+--
+-- select jobid, runid, status, return_message, start_time, end_time
+-- from cron.job_run_details
+-- where jobid in (
+--   select jobid
+--   from cron.job
+--   where jobname = 'wc2026-finished-score-sync'
+-- )
+-- order by start_time desc
+-- limit 20;
+--
+-- 7. Immediate shutdown: unschedule the job by name.
+--
+-- select cron.unschedule('wc2026-finished-score-sync');
+--
+-- Also set the Edge Function secret FINISHED_SCORE_SYNC_ENABLED=false. The
+-- function will then treat {"dryRun":false} as a dry-run even if an invocation
+-- is still delivered.
