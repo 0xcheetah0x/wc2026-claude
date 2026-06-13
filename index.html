@@ -3776,6 +3776,18 @@ const getMatchStatus=(m,now,scores)=>{
   if(now.getTime()<s+100*60000) return 'live';
   return 'upcoming';
 };
+const getNextUpcomingMatch=(matches,now)=>{
+  const nowMs=now instanceof Date?now.getTime():new Date(now).getTime();
+  if(!Number.isFinite(nowMs)) return null;
+  const candidates=(Array.isArray(matches)?matches:[]).filter(m=>{
+    const kickoffMs=new Date(m?.utc).getTime();
+    return Number.isFinite(kickoffMs)&&kickoffMs>nowMs&&m?.status==='upcoming';
+  });
+  return candidates.sort((a,b)=>{
+    const kickoffDiff=new Date(a.utc).getTime()-new Date(b.utc).getTime();
+    return kickoffDiff||(Number(a.id)||0)-(Number(b.id)||0);
+  })[0]||null;
+};
 const cdText=(u,now)=>{
   const diff=new Date(u).getTime()-now.getTime();
   if(diff<=0) return null;
@@ -4556,7 +4568,7 @@ function HomeScreen({currentUser,scores,liveSync}){
   const live=enriched.filter(m=>m.status==='live');
   const upcoming=enriched.filter(m=>m.status==='upcoming');
   const finished=enriched.filter(m=>m.status==='finished');
-  const nextM=enriched.find(m=>m.status==='upcoming');
+  const nextM=getNextUpcomingMatch(enriched,now);
   const preTournament=now<new Date('2026-06-11T19:00:00Z');
   const cdTarget=preTournament?new Date('2026-06-11T19:00:00Z'):nextM?new Date(nextM.utc):null;
   const cdVal=cdTarget?cdText(cdTarget.toISOString(),now):null;
@@ -5198,7 +5210,7 @@ function MyScreen({currentUser,onUserUpdate,scores}){
 
   const openMatches=enriched.filter(m=>m.ls==='open'||m.ls==='warn');
   const lockedFinished=enriched.filter(m=>m.ls==='locked'||m.ls==='started'||m.status==='finished');
-  const nextM=enriched.find(m=>m.status==='upcoming');
+  const nextM=getNextUpcomingMatch(enriched,now);
   const cd=nextM?cdText(nextM.utc,now):null;
   const predictRate=MATCHES.length?Math.round((totalPreds/MATCHES.length)*100):0;
   const successRate=finishedWithScore.length?Math.round((correctPreds/finishedWithScore.length)*100):0;
