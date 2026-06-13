@@ -734,23 +734,36 @@ body{
   border-color:rgba(34,214,106,.38);
   background:linear-gradient(180deg,rgba(34,214,106,.1),rgba(10,22,40,.76));
   box-shadow:0 0 14px rgba(34,214,106,.1);
-  animation:prediction-history-exact-pulse 3.2s ease-in-out infinite;
+  overflow:hidden;
 }
 .my-fm .hist-row.prediction-history-card--exact:hover{
+  transform:none;
   border-color:rgba(34,214,106,.55);
   background:linear-gradient(180deg,rgba(34,214,106,.14),rgba(10,22,40,.82));
   box-shadow:0 10px 20px rgba(0,0,0,.28),0 0 16px rgba(34,214,106,.14);
 }
-@keyframes prediction-history-exact-pulse{
+.prediction-history-card__content{
+  width:100%;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  transform-origin:center center;
+}
+.my-fm .prediction-history-card--exact .prediction-history-card__content{
+  animation:prediction-history-exact-breath 3.2s ease-in-out infinite;
+}
+@keyframes prediction-history-exact-breath{
   0%,100%{transform:scale(1)}
   50%{transform:scale(1.01)}
 }
 @media (prefers-reduced-motion:reduce){
-  .my-fm .hist-row.prediction-history-card--exact{animation:none}
+  .my-fm .prediction-history-card--exact .prediction-history-card__content{animation:none}
 }
 .hist-match{flex:1}
 .hist-teams{font-size:12px;font-weight:600;font-family:var(--f-ui)}
 .hist-date{font-family:var(--f-mono);font-size:9px;color:var(--tm);margin-top:1px;letter-spacing:.04em}
+.hist-label{font-size:10px;color:var(--tm);margin-bottom:2px;white-space:nowrap}
 .hist-pred{font-family:var(--f-mono);font-size:17px;font-weight:700;color:var(--ts)}
 .hist-result{font-family:var(--f-mono);font-size:17px;font-weight:700;color:var(--tp)}
 .hist-pts{font-family:var(--f-mono);font-size:18px;font-weight:700;min-width:40px;text-align:right}
@@ -2239,6 +2252,25 @@ body{
 .pred-card .mboard-team{gap:7px}
 .my-fm .pred-card .mboard-score.my-page-final-score,
 .my-fm .pred-card .mboard-score.my-page-final-score span{color:var(--green)}
+.my-fm .locked-finished-prediction-block{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  margin-bottom:12px;
+}
+.my-fm .locked-finished-prediction-label{
+  font-size:11px;
+  color:var(--tm);
+  letter-spacing:.12em;
+  font-weight:700;
+  margin-bottom:6px;
+}
+.my-fm .locked-finished-prediction-score{
+  width:100%;
+  justify-content:center;
+}
 
 .rules-fm .rules-banner{
   min-height:96px;
@@ -2762,12 +2794,14 @@ body{
   }
   .my-fm .pred-footer .btn-sm{width:100%}
   .my-fm .hist-row{
-    flex-wrap:wrap;
-    gap:8px;
     padding:8px;
   }
+  .my-fm .prediction-history-card__content{
+    flex-wrap:wrap;
+    gap:8px;
+  }
   .my-fm .hist-match{width:100%}
-  .my-fm .hist-row>div:not(.hist-match){
+  .my-fm .prediction-history-card__content>div:not(.hist-match){
     flex:1 1 30%;
     min-width:0;
     text-align:center;
@@ -5333,7 +5367,7 @@ function MyScreen({currentUser,onUserUpdate,scores}){
             }
           </div>}
 
-          {tab==='history'&&<PredHistory preds={preds} scores={scores}/>}
+          {tab==='history'&&<PredHistory preds={preds} scores={scores} totalPoints={totalPts}/>}
         </div>
       </div>
     </section>
@@ -5556,9 +5590,9 @@ function PredictionCard({m,pred,score,now,onSave,displayContext='default'}){
 
       {/* Locked with prediction */}
       {locked&&pred&&<>
-        <div style={{textAlign:'center',marginBottom:12}}>
-          <div style={{fontSize:11,color:'var(--tm)',letterSpacing:'.12em',fontWeight:700,marginBottom:6}}>TAHMİNİNİZ</div>
-          <div className="pred-saved-score">
+        <div className={isLockedFinishedCard?'locked-finished-prediction-block':''} style={isLockedFinishedCard?undefined:{textAlign:'center',marginBottom:12}}>
+          <div className={isLockedFinishedCard?'locked-finished-prediction-label':''} style={isLockedFinishedCard?undefined:{fontSize:11,color:'var(--tm)',letterSpacing:'.12em',fontWeight:700,marginBottom:6}}>TAHMİNİNİZ</div>
+          <div className={`pred-saved-score${isLockedFinishedCard?' locked-finished-prediction-score':''}`}>
             <span>{pred.h}</span><span className="pred-saved-sep">:</span><span>{pred.a}</span>
           </div>
         </div>
@@ -5600,14 +5634,13 @@ function PredLockedList({matches,preds,scores,now}){
 }
 
 /*  Prediction History  */
-function PredHistory({preds,scores}){
+function PredHistory({preds,scores,totalPoints=0}){
   const rows=MATCHES.map(m=>({m,pred:preds[m.id]||null,score:scores[m.id]||null})).filter(r=>r.pred||r.score);
   if(rows.length===0) return<div style={{padding:'24px',textAlign:'center',color:'var(--ts)',fontSize:14}}>Henüz tahmin girilmemiş. "Tahmin Yap" sekmesinden başlayın!</div>;
-  const totalPts=rows.reduce((s,r)=>s+(r.pred?.pts||0),0);
   return<div>
     <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
       <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:'.12em',color:'var(--ts)'}}>TOPLAM: {rows.length} TAHMİN</div>
-      <div style={{marginLeft:'auto',fontFamily:"'Bebas Neue'",fontSize:22,color:totalPts>0?'var(--green)':totalPts<0?'var(--red)':'var(--tm)'}}>{totalPts>0?'+':''}{totalPts} PUAN</div>
+      <div style={{marginLeft:'auto',fontFamily:"'Bebas Neue'",fontSize:22,color:totalPoints>0?'var(--green)':totalPoints<0?'var(--red)':'var(--tm)'}}>· {totalPoints} PUAN</div>
     </div>
     <div className="scroll" style={{maxHeight:520}}>
       {rows.map(({m,pred,score})=>{
@@ -5621,22 +5654,23 @@ function PredHistory({preds,scores}){
           key={m.id}
           className={`hist-row${isExactScore?' prediction-history-card--exact':''}`}
           title={isExactScore?'Tam skor doğru tahmin edildi':undefined}
-        >
+        ><div className="prediction-history-card__content">
           <div className="hist-match">
             <div className="hist-teams" style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><WFlag team={m.h} size="sm"/><span>{m.h}</span><span>vs</span><WFlag team={m.a} size="sm"/><span>{m.a}</span></div>
             <div className="hist-date">{fmtDateFull(m.utc)} · {fmtTR(m.utc)} TR · Grup {m.grp}</div>
           </div>
           <div style={{textAlign:'center'}}>
-            <div style={{fontSize:10,color:'var(--tm)',marginBottom:2}}>TAHMİN</div>
+            <div className="hist-label">TAHMİN</div>
             {pred?<div className="hist-pred">{pred.h} - {pred.a}</div>:<div style={{fontSize:11,color:'var(--red)'}}></div>}
           </div>
           <div style={{textAlign:'center'}}>
-            <div style={{fontSize:10,color:'var(--tm)',marginBottom:2}}>SONU</div>
+            <div className="hist-label">SONUÇ</div>
             {score?<div className="hist-result">{score.h} - {score.a}</div>:<div style={{fontSize:11,color:'var(--tm)'}}>?</div>}
           </div>
           <div className="hist-pts">
             {pred?.pts!=null?<span style={{color:pred.pts>0?'var(--green)':pred.pts<0?'var(--red)':'var(--tm)',fontFamily:"'Bebas Neue'",fontSize:20}}>{pred.pts>0?'+':''}{pred.pts}</span>:<span style={{color:'var(--tm)',fontSize:14}}></span>}
           </div>
+        </div>
         </div>;
       })}
     </div>
