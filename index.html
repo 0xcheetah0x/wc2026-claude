@@ -730,6 +730,24 @@ body{
   box-shadow:0 10px 20px rgba(0,0,0,.3),0 0 14px rgba(212,175,55,.16);
 }
 .hist-row:active{transform:translateY(-1px) scale(1.005)}
+.my-fm .hist-row.prediction-history-card--exact{
+  border-color:rgba(34,214,106,.38);
+  background:linear-gradient(180deg,rgba(34,214,106,.1),rgba(10,22,40,.76));
+  box-shadow:0 0 14px rgba(34,214,106,.1);
+  animation:prediction-history-exact-pulse 3.2s ease-in-out infinite;
+}
+.my-fm .hist-row.prediction-history-card--exact:hover{
+  border-color:rgba(34,214,106,.55);
+  background:linear-gradient(180deg,rgba(34,214,106,.14),rgba(10,22,40,.82));
+  box-shadow:0 10px 20px rgba(0,0,0,.28),0 0 16px rgba(34,214,106,.14);
+}
+@keyframes prediction-history-exact-pulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.01)}
+}
+@media (prefers-reduced-motion:reduce){
+  .my-fm .hist-row.prediction-history-card--exact{animation:none}
+}
 .hist-match{flex:1}
 .hist-teams{font-size:12px;font-weight:600;font-family:var(--f-ui)}
 .hist-date{font-family:var(--f-mono);font-size:9px;color:var(--tm);margin-top:1px;letter-spacing:.04em}
@@ -2219,6 +2237,8 @@ body{
 .pred-card .wf-sm{--fw:20px;--fh:14px}
 .pred-card .mboard-name{font-size:13px}
 .pred-card .mboard-team{gap:7px}
+.my-fm .pred-card .mboard-score.my-page-final-score,
+.my-fm .pred-card .mboard-score.my-page-final-score span{color:var(--green)}
 
 .rules-fm .rules-banner{
   min-height:96px;
@@ -4335,7 +4355,7 @@ function ProductionModeNotice(){
 function Field({label,type='text',...r}){return<div className="field">{label&&<label>{label}</label>}<input type={type} {...r}/></div>}
 function SelField({label,children,...r}){return<div className="field">{label&&<label>{label}</label>}<select {...r}>{children}</select></div>}
 
-function MatchScoreboard({m,now,score,status}){
+function MatchScoreboard({m,now,score,status,scoreClassName=''}) {
   const isLive=status==='live';
   const isFinished=status==='finished';
   const countdown=!isLive&&!isFinished?cdText(m.utc,now):null;
@@ -4360,7 +4380,7 @@ function MatchScoreboard({m,now,score,status}){
           <div className="mboard-cd">{countdown||'BAŞLIYOR'}</div>
           <div className="mboard-sub">Maçın Başlamasına</div>
         </>}
-        {(isLive||isFinished)&&<div className="mboard-score"><span>{score?.h??'-'}</span><span>:</span><span>{score?.a??'-'}</span></div>}
+        {(isLive||isFinished)&&<div className={`mboard-score${scoreClassName?` ${scoreClassName}`:''}`}><span>{score?.h??'-'}</span><span>:</span><span>{score?.a??'-'}</span></div>}
       </div>
       <div className="mboard-team right">
         <span className="mboard-name">{m.a}</span>
@@ -5445,7 +5465,7 @@ function PredMatchList({matches,preds,scores,now,onSave}){
 }
 
 /*  Prediction Card (the star of the show)  */
-function PredictionCard({m,pred,score,now,onSave}){
+function PredictionCard({m,pred,score,now,onSave,displayContext='default'}){
   const [hVal,setHVal]=useState(pred?String(pred.h):'');
   const [aVal,setAVal]=useState(pred?String(pred.a):'');
   const [dirty,setDirty]=useState(false);
@@ -5454,6 +5474,7 @@ function PredictionCard({m,pred,score,now,onSave}){
   const locked=ls==='locked'||ls==='started';
   const isLiveScoreboard=score&&score.status==='live';
   const isFinished=score!=null&&!isLiveScoreboard;
+  const isLockedFinishedCard=displayContext==='locked-finished'&&isFinalScoreForUserProfile(score);
 
   // Hydrate async owner predictions without overwriting an in-progress edit.
   useEffect(()=>{
@@ -5499,7 +5520,13 @@ function PredictionCard({m,pred,score,now,onSave}){
     <div className="pred-body">
       {/* Shared scoreboard-style match header */}
       <div style={{marginBottom:12}}>
-        <MatchScoreboard m={m} now={now} score={score} status={isFinished?'finished':isLiveScoreboard||hasStarted?'live':'upcoming'}/>
+        <MatchScoreboard
+          m={m}
+          now={now}
+          score={score}
+          status={isFinished?'finished':isLiveScoreboard||hasStarted?'live':'upcoming'}
+          scoreClassName={isLockedFinishedCard?'my-page-final-score':''}
+        />
       </div>
 
       {/* Score input or locked display */}
@@ -5536,10 +5563,10 @@ function PredictionCard({m,pred,score,now,onSave}){
           </div>
         </div>
         {isFinished&&<>
-          <div style={{textAlign:'center',marginBottom:12}}>
+          {!isLockedFinishedCard&&<div style={{textAlign:'center',marginBottom:12}}>
             <div style={{fontSize:11,color:'var(--tm)',letterSpacing:'.12em',fontWeight:700,marginBottom:6}}>GEREK SONU</div>
             <div className="pred-result"><span>{score.h}</span><span className="pred-result-sep">:</span><span>{score.a}</span></div>
-          </div>
+          </div>}
           {pred.pts!=null&&<div style={{textAlign:'center'}}>
             <div style={{fontSize:11,color:'var(--tm)',letterSpacing:'.12em',fontWeight:700,marginBottom:4}}>KAZANILAN PUAN</div>
             <div className={`pred-pts ${pred.pts>0?'pts-pos':pred.pts<0?'pts-neg':'pts-0'}`}>{pred.pts>0?'+':''}{pred.pts}</div>
@@ -5567,7 +5594,7 @@ function PredLockedList({matches,preds,scores,now}){
   return<div>{Object.entries(byDate).sort(([a],[b])=>b.localeCompare(a)).map(([dk,ms])=>(
     <div key={dk}>
       <div className="dt-sep">{fmtDateFull(ms[0].utc)}</div>
-      {ms.map(m=><PredictionCard key={m.id} m={m} pred={preds[m.id]||null} score={scores[m.id]||null} now={now} onSave={()=>{}}/>)}
+      {ms.map(m=><PredictionCard key={m.id} m={m} pred={preds[m.id]||null} score={scores[m.id]||null} now={now} onSave={()=>{}} displayContext="locked-finished"/>)}
     </div>
   ))}</div>;
 }
@@ -5583,8 +5610,18 @@ function PredHistory({preds,scores}){
       <div style={{marginLeft:'auto',fontFamily:"'Bebas Neue'",fontSize:22,color:totalPts>0?'var(--green)':totalPts<0?'var(--red)':'var(--tm)'}}>{totalPts>0?'+':''}{totalPts} PUAN</div>
     </div>
     <div className="scroll" style={{maxHeight:520}}>
-      {rows.map(({m,pred,score})=>(
-        <div key={m.id} className="hist-row">
+      {rows.map(({m,pred,score})=>{
+        const isExactScore=Boolean(
+          pred
+          &&isFinalScoreForUserProfile(score)
+          &&pred.h===score.h
+          &&pred.a===score.a
+        );
+        return <div
+          key={m.id}
+          className={`hist-row${isExactScore?' prediction-history-card--exact':''}`}
+          title={isExactScore?'Tam skor doğru tahmin edildi':undefined}
+        >
           <div className="hist-match">
             <div className="hist-teams" style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><WFlag team={m.h} size="sm"/><span>{m.h}</span><span>vs</span><WFlag team={m.a} size="sm"/><span>{m.a}</span></div>
             <div className="hist-date">{fmtDateFull(m.utc)} · {fmtTR(m.utc)} TR · Grup {m.grp}</div>
@@ -5600,8 +5637,8 @@ function PredHistory({preds,scores}){
           <div className="hist-pts">
             {pred?.pts!=null?<span style={{color:pred.pts>0?'var(--green)':pred.pts<0?'var(--red)':'var(--tm)',fontFamily:"'Bebas Neue'",fontSize:20}}>{pred.pts>0?'+':''}{pred.pts}</span>:<span style={{color:'var(--tm)',fontSize:14}}></span>}
           </div>
-        </div>
-      ))}
+        </div>;
+      })}
     </div>
   </div>;
 }
