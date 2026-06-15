@@ -3905,6 +3905,15 @@ const ruleOutcomePoints=(m,pred,sc)=>{
 };
 const ruleMatchPoints=(m,pred,sc)=>ruleScorePoints(pred,sc)+ruleOutcomePoints(m,pred,sc);
 const isLiveScore=sc=>sc&&sc.status==='live';
+const leaderboardSortName=row=>String(row?.displayName||row?.username||'');
+const compareLeaderboardRows=(a,b)=>(
+  (Number(b?.totalPoints)||0)-(Number(a?.totalPoints)||0)
+  ||(Number(b?.tt)||0)-(Number(a?.tt)||0)
+  ||(Number(b?.st)||0)-(Number(a?.st)||0)
+  ||(Number(b?.exactScoreGoalTotalTiebreak)||0)-(Number(a?.exactScoreGoalTotalTiebreak)||0)
+  ||leaderboardSortName(a).localeCompare(leaderboardSortName(b),'tr',{sensitivity:'base'})
+  ||String(a?.username||'').localeCompare(String(b?.username||''),'tr',{sensitivity:'base'})
+);
 const computeLeaderboard=(users,scores)=>{
   const officialChampion=championAdapter.getOfficialWinner();
   const championBonusEnabled=isTournamentPickLocked(new Date());
@@ -3913,7 +3922,7 @@ const computeLeaderboard=(users,scores)=>{
     const preds=predictionsAdapter.getForUser(u.username);
     const championPick=championAdapter.getForUser(u.username);
     const goldenBootPick=goldenBootAdapter.getForUser(u.username);
-    let confirmed=0,potentialLive=0,st=0,tt=0,playedFinal=0;
+    let confirmed=0,potentialLive=0,st=0,tt=0,playedFinal=0,exactScoreGoalTotalTiebreak=0;
     MATCHES.forEach(m=>{
       const pred=preds[m.id];
       const sc=scores[m.id];
@@ -3924,7 +3933,10 @@ const computeLeaderboard=(users,scores)=>{
       }else{
         confirmed+=p;
         playedFinal++;
-        if(pred.h===sc.h&&pred.a===sc.a) st++;
+        if(pred.h===sc.h&&pred.a===sc.a){
+          st++;
+          exactScoreGoalTotalTiebreak+=sc.h+sc.a;
+        }
         if(outcome(pred.h,pred.a)===outcome(sc.h,sc.a)) tt++;
       }
     });
@@ -3933,9 +3945,9 @@ const computeLeaderboard=(users,scores)=>{
     confirmed+=championPts+goldenBootPts;
     const totalPoints=confirmed+potentialLive;
     const avg=playedFinal?confirmed/playedFinal:0;
-    return{...u,totalPoints,confirmedPts:confirmed,potentialPts:potentialLive,st,tt,avg,played:playedFinal,championPts,goldenBootPts};
+    return{...u,totalPoints,confirmedPts:confirmed,potentialPts:potentialLive,st,tt,avg,played:playedFinal,championPts,goldenBootPts,exactScoreGoalTotalTiebreak};
   });
-  return rows.sort((a,b)=>(b.totalPoints-a.totalPoints||b.avg-a.avg||b.st-a.st||b.tt-a.tt||a.displayName.localeCompare(b.displayName,'tr')));
+  return rows.sort(compareLeaderboardRows);
 };
 
 // SQL public.leaderboard scoring must stay aligned with ruleScorePoints,
@@ -3953,6 +3965,7 @@ const mapSupabaseLeaderboardRow=row=>{
     potentialPts:0,
     st:Number(row.exact_scores)||0,
     tt:Number(row.correct_outcomes)||0,
+    exactScoreGoalTotalTiebreak:Number(row.exact_score_goal_total_tiebreak)||0,
     avg:played?total/played:0,
     played,
     avatarId:'',
@@ -3972,8 +3985,10 @@ const productionLeaderboardAdapter={
   loadLeaderboard:async()=>{
     const {session}=await requireSupabaseUser();
     await loadProductionTournamentSettings();
-    const rows=await supabaseFetch('/rest/v1/leaderboard?select=user_id,username,display_name,total_points,exact_scores,correct_outcomes,scored_matches&order=total_points.desc,username.asc',{token:session.access_token});
-    productionLeaderboardCache=(Array.isArray(rows)?rows:[]).map(mapSupabaseLeaderboardRow);
+    const rows=await supabaseFetch('/rest/v1/leaderboard?select=user_id,username,display_name,total_points,exact_scores,correct_outcomes,scored_matches,exact_score_goal_total_tiebreak&order=total_points.desc,correct_outcomes.desc,exact_scores.desc,exact_score_goal_total_tiebreak.desc,display_name.asc,username.asc',{token:session.access_token});
+    productionLeaderboardCache=(Array.isArray(rows)?rows:[])
+      .map(mapSupabaseLeaderboardRow)
+      .sort(compareLeaderboardRows);
     return productionLeaderboardCache;
   }
 };
@@ -4038,7 +4053,7 @@ async function loadSupabasePublicUserProfile(username,{scores={},rankingDayKey=n
 
   let lbRow=(leaderboardRows||[]).find(row=>normalizeUserLookupKey(row.username)===key)||null;
   if(!lbRow){
-    const lbRows=await supabaseFetch(`/rest/v1/leaderboard?username=eq.${encodeURIComponent(key)}&select=user_id,username,display_name,total_points,exact_scores,correct_outcomes,scored_matches`,{token:session.access_token});
+    const lbRows=await supabaseFetch(`/rest/v1/leaderboard?username=eq.${encodeURIComponent(key)}&select=user_id,username,display_name,total_points,exact_scores,correct_outcomes,scored_matches,exact_score_goal_total_tiebreak`,{token:session.access_token});
     lbRow=Array.isArray(lbRows)&&lbRows[0]?mapSupabaseLeaderboardRow(lbRows[0]):null;
   }
 
