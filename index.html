@@ -3889,7 +3889,7 @@ const ruleScorePoints=(pred,sc)=>{
   if((sc.h===2&&sc.a===0)||(sc.h===0&&sc.a===2)) return 3;
   if((sc.h===2&&sc.a===1)||(sc.h===1&&sc.a===2)) return 3;
   if((sc.h===3&&sc.a===0)||(sc.h===0&&sc.a===3)) return 3; // Rules page mapping
-  if(Math.abs(sc.h-sc.a)>=3&&(sc.h+sc.a)>=4) return 5;      // 3+ fark (except 3-0/0-3)
+  if(sc.h!==sc.a&&(sc.h+sc.a)>=4) return 5;                  // 3+ skor (non-draw total goals)
   return 0;
 };
 const ruleOutcomePoints=(m,pred,sc)=>{
@@ -5713,7 +5713,7 @@ function RulesScreen(){
     ['2-2 beraberlik','4 Puan'],
     ['3-3 beraberlik','5 Puan'],
     ['4-4 ve üzeri beraberlikler','6 Puan'],
-    ['3+ fark','5 Puan']
+    ['3+ skor (3-1 / 1-3 / 4-0 / 4-1 ...)','5 Puan']
   ];
 
   return<div className="rules-fm">
