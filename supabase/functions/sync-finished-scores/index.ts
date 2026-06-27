@@ -18,6 +18,8 @@ type ScoreRow = {
   away_score: number;
   status: "finished";
   minute: 90;
+  source: typeof PROVIDER;
+  provider_updated_at: string;
 };
 
 type ExistingScore = {
@@ -26,6 +28,26 @@ type ExistingScore = {
   away_score: number;
   status: string;
   minute: number;
+  source: string | null;
+  provider_updated_at: string | null;
+};
+
+type FinishedScoreCandidate = {
+  provider_match_id: number;
+  home: string | null;
+  away: string | null;
+  row: ScoreRow;
+};
+
+type ScoreConflict = {
+  match_id: number;
+  provider_match_id: number;
+  home: string | null;
+  away: string | null;
+  stored_score: string;
+  provider_score: string;
+  existing_source: string | null;
+  action: "skipped";
 };
 
 type SyncReport = {
@@ -39,6 +61,8 @@ type SyncReport = {
   inserted_count: number;
   unchanged_count: number;
   corrected_count: number;
+  conflict_count: number;
+  conflicts: ScoreConflict[];
   skipped_count: number;
   live_write_enabled: false;
   messages: string[];
@@ -63,6 +87,8 @@ function report(overrides: Partial<SyncReport> = {}): SyncReport {
     inserted_count: 0,
     unchanged_count: 0,
     corrected_count: 0,
+    conflict_count: 0,
+    conflicts: [],
     skipped_count: 0,
     live_write_enabled: false,
     messages: [],
@@ -94,6 +120,17 @@ function secretsMatch(received: string, expected: string): boolean {
 
 function isValidScore(value: unknown): value is number {
   return Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 20;
+}
+
+function providerTeamName(team: {
+  name?: unknown;
+  shortName?: unknown;
+  tla?: unknown;
+} | undefined): string | null {
+  const candidate = team?.name ?? team?.shortName ?? team?.tla;
+  return typeof candidate === "string" && candidate.trim()
+    ? candidate.trim()
+    : null;
 }
 
 async function readRequestBody(request: Request): Promise<Record<string, unknown>> {
@@ -237,7 +274,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
   }
   const providerMatches = rawProviderMatches;
 
-  const validRowsByMatchId = new Map<number, ScoreRow>();
+  const providerObservedAt = new Date().toISOString();
+  const validRowsByMatchId = new Map<number, FinishedScoreCandidate>();
   let mappedFixtureCount = 0;
   let skippedCount = 0;
   let liveCount = 0;
@@ -249,6 +287,16 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const fixture = value as {
       id?: unknown;
       status?: unknown;
+      homeTeam?: {
+        name?: unknown;
+        shortName?: unknown;
+        tla?: unknown;
+      };
+      awayTeam?: {
+        name?: unknown;
+        shortName?: unknown;
+        tla?: unknown;
+      };
       score?: {
         fullTime?: {
           home?: unknown;
@@ -299,11 +347,18 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     validRowsByMatchId.set(internalMatchId, {
-      match_id: internalMatchId,
-      home_score: homeScore,
-      away_score: awayScore,
-      status: "finished",
-      minute: 90,
+      provider_match_id: providerMatchId,
+      home: providerTeamName(fixture.homeTeam),
+      away: providerTeamName(fixture.awayTeam),
+      row: {
+        match_id: internalMatchId,
+        home_score: homeScore,
+        away_score: awayScore,
+        status: "finished",
+        minute: 90,
+        source: PROVIDER,
+        provider_updated_at: providerObservedAt,
+      },
     });
   }
 
@@ -317,7 +372,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   }
 
   const validRows = Array.from(validRowsByMatchId.values()).sort(
-    (left, right) => left.match_id - right.match_id,
+    (left, right) => left.row.match_id - right.row.match_id,
   );
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
@@ -330,10 +385,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
   if (validRows.length > 0) {
     const { data, error } = await supabase
       .from("scores")
-      .select("match_id,home_score,away_score,status,minute")
+      .select(
+        "match_id,home_score,away_score,status,minute,source,provider_updated_at",
+      )
       .in(
         "match_id",
-        validRows.map((row) => row.match_id),
+        validRows.map((candidate) => candidate.row.match_id),
       );
 
     if (error || !Array.isArray(data)) {
@@ -358,11 +415,14 @@ Deno.serve(async (request: Request): Promise<Response> => {
     existingRows.map((row) => [Number(row.match_id), row]),
   );
   const rowsToWrite: ScoreRow[] = [];
+  const conflicts: ScoreConflict[] = [];
   let insertedCount = 0;
   let unchangedCount = 0;
   let correctedCount = 0;
+  let conflictCount = 0;
 
-  for (const row of validRows) {
+  for (const candidate of validRows) {
+    const row = candidate.row;
     const existing = existingByMatchId.get(row.match_id);
     if (!existing) {
       insertedCount += 1;
@@ -370,12 +430,28 @@ Deno.serve(async (request: Request): Promise<Response> => {
       continue;
     }
 
-    if (
-      String(existing.status).toLowerCase() === "finished" &&
-      Number(existing.home_score) === row.home_score &&
-      Number(existing.away_score) === row.away_score
-    ) {
+    const existingStatus = String(existing.status).toLowerCase();
+    const existingScore = `${Number(existing.home_score)}-${Number(existing.away_score)}`;
+    const providerScore = `${row.home_score}-${row.away_score}`;
+
+    if (existingStatus === "finished" && existingScore === providerScore) {
       unchangedCount += 1;
+      continue;
+    }
+
+    if (existingStatus === "finished") {
+      conflictCount += 1;
+      skippedCount += 1;
+      conflicts.push({
+        match_id: row.match_id,
+        provider_match_id: candidate.provider_match_id,
+        home: candidate.home,
+        away: candidate.away,
+        stored_score: existingScore,
+        provider_score: providerScore,
+        existing_source: existing.source ?? null,
+        action: "skipped",
+      });
       continue;
     }
 
@@ -385,7 +461,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   messages.push(`${insertedCount} finished score row(s) classified as inserted.`);
   messages.push(`${unchangedCount} finished score row(s) classified as unchanged.`);
-  messages.push(`${correctedCount} finished score row(s) classified as corrected.`);
+  messages.push(
+    `${correctedCount} non-final score row(s) classified as finalized.`,
+  );
+  messages.push(
+    `${conflictCount} finished score conflict(s) skipped without overwrite.`,
+  );
 
   if (writeEnabled && rowsToWrite.length > 0) {
     const { error } = await supabase
@@ -404,6 +485,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
           inserted_count: insertedCount,
           unchanged_count: unchangedCount,
           corrected_count: correctedCount,
+          conflict_count: conflictCount,
+          conflicts,
           skipped_count: skippedCount,
           messages: [...messages, "Finished-score upsert failed."],
         }),
@@ -429,6 +512,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
       inserted_count: insertedCount,
       unchanged_count: unchangedCount,
       corrected_count: correctedCount,
+      conflict_count: conflictCount,
+      conflicts,
       skipped_count: skippedCount,
       messages,
     }),

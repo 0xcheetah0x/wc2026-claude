@@ -41,6 +41,7 @@ WC2026 manual score admin
 Usage:
   node server/set-score.js --match=1 --home=2 --away=1 --status=finished --minute=90 --dry-run
   node server/set-score.js --match=1 --home=2 --away=1 --status=finished --minute=90
+  node server/set-score.js --match=1 --home=2 --away=1 --status=finished --minute=90 --source=manual --dry-run
 
 Required args:
   --match=<positive integer>
@@ -50,6 +51,7 @@ Required args:
 
 Optional args:
   --minute=<non-negative integer>
+  --source=<lowercase label, default: manual>
   --dry-run
   --help
 
@@ -126,6 +128,14 @@ function parseInteger(value, name, { positive = false } = {}) {
   return n;
 }
 
+function parseSource(value) {
+  const source = String(value === undefined ? "manual" : value).trim().toLowerCase();
+  if (!/^[a-z][a-z0-9_-]{0,39}$/.test(source)) {
+    throw new InputError("--source must start with a letter and use only lowercase letters, numbers, _ or -.");
+  }
+  return source;
+}
+
 function validateScoreArgs(args) {
   const status = String(args.status || "").trim().toLowerCase();
   if (!VALID_STATUSES.has(status)) {
@@ -140,6 +150,7 @@ function validateScoreArgs(args) {
     awayScore: parseInteger(args.away, "away"),
     status,
     minute: parseInteger(minuteRaw, "minute"),
+    source: parseSource(args.source),
     dryRun: Boolean(args.dryRun)
   };
 }
@@ -189,7 +200,8 @@ function scorePayload(score) {
     home_score: score.homeScore,
     away_score: score.awayScore,
     status: score.status,
-    minute: score.minute
+    minute: score.minute,
+    source: score.source
   };
 }
 
@@ -276,6 +288,9 @@ async function main(argv = process.argv.slice(2)) {
   console.log(JSON.stringify(payload, null, 2));
 
   if (score.dryRun) {
+    console.log(
+      `[set-score] Dry-run: would set match ${score.matchId} to ${score.status} ${score.homeScore}-${score.awayScore} at minute ${score.minute} (source: ${score.source}).`
+    );
     console.log("[set-score] Dry-run active. Supabase match check and score write skipped.");
     return { ok: true, dryRun: true, payload };
   }

@@ -1415,7 +1415,7 @@ async function fetchExistingScoresFromSupabase(rows, config) {
 
   const baseUrl = config.supabaseUrl.replace(/\/$/, "");
   const params = new URLSearchParams({
-    select: "match_id,home_score,away_score,status,minute",
+    select: "match_id,home_score,away_score,status,minute,source,provider_updated_at",
     match_id: `in.(${matchIds.join(",")})`
   });
   const response = await fetch(`${baseUrl}/rest/v1/scores?${params.toString()}`, {
@@ -1447,6 +1447,7 @@ function reconcileFootballDataFinishedRows(providerRows, existingRows) {
   );
   const rowsToWrite = [];
   const actions = [];
+  const providerUpdatedAt = new Date().toISOString();
 
   for (const row of providerRows) {
     const matchId = Number(row.match_id);
@@ -1476,7 +1477,9 @@ function reconcileFootballDataFinishedRows(providerRows, existingRows) {
       minute:
         Number.isInteger(row.minute) && row.minute >= 0 && row.minute <= 130
           ? row.minute
-          : 90
+          : 90,
+      source: FOOTBALL_DATA_PROVIDER,
+      provider_updated_at: providerUpdatedAt
     };
     const existing = existingByMatchId.get(matchId);
     if (!existing) {
@@ -1485,16 +1488,29 @@ function reconcileFootballDataFinishedRows(providerRows, existingRows) {
       continue;
     }
 
-    const unchanged =
-      String(existing.status || "").toLowerCase() === "finished" &&
-      Number(existing.home_score) === finishedRow.home_score &&
-      Number(existing.away_score) === finishedRow.away_score;
-    if (unchanged) {
+    const existingStatus = String(existing.status || "").toLowerCase();
+    const existingScore = `${Number(existing.home_score)}-${Number(existing.away_score)}`;
+    const providerScore = `${finishedRow.home_score}-${finishedRow.away_score}`;
+
+    if (existingStatus === "finished" && existingScore === providerScore) {
       actions.push({
         action: "unchanged",
         match_id: matchId,
         row: finishedRow,
         existing
+      });
+      continue;
+    }
+
+    if (existingStatus === "finished") {
+      actions.push({
+        action: "conflict",
+        match_id: matchId,
+        row: finishedRow,
+        existing,
+        stored_score: existingScore,
+        provider_score: providerScore,
+        reason: "Stored final score differs from provider final score; automatic overwrite skipped."
       });
       continue;
     }
@@ -1525,7 +1541,11 @@ function logFootballDataSyncActions(actions) {
       const oldScore = `${item.existing.home_score}-${item.existing.away_score}`;
       const oldStatus = item.existing.status || "unknown";
       log(
-        `Match ${item.match_id}: corrected existing ${oldStatus} score ${oldScore} to finished ${item.row.home_score}-${item.row.away_score}.`
+        `Match ${item.match_id}: finalized existing ${oldStatus} score ${oldScore} to finished ${item.row.home_score}-${item.row.away_score}.`
+      );
+    } else if (item.action === "conflict") {
+      warn(
+        `Match ${item.match_id}: conflict skipped; stored final ${item.stored_score}, provider final ${item.provider_score}.`
       );
     } else {
       warn(`Match ${item.match_id}: skipped. ${item.reason}`);
@@ -1536,7 +1556,7 @@ function logFootballDataSyncActions(actions) {
 async function syncFootballDataFinishedScores(rows, config) {
   if (!rows.length) {
     log("No finished football-data score rows to reconcile.");
-    return { written: 0, inserted: 0, unchanged: 0, corrected: 0, skipped: 0 };
+    return { written: 0, inserted: 0, unchanged: 0, corrected: 0, conflict: 0, skipped: 0 };
   }
 
   const existingRows = await fetchExistingScoresFromSupabase(rows, config);
@@ -1552,6 +1572,7 @@ async function syncFootballDataFinishedScores(rows, config) {
     inserted: reconciliation.actions.filter((item) => item.action === "inserted").length,
     unchanged: reconciliation.actions.filter((item) => item.action === "unchanged").length,
     corrected: reconciliation.actions.filter((item) => item.action === "corrected").length,
+    conflict: reconciliation.actions.filter((item) => item.action === "conflict").length,
     skipped: reconciliation.actions.filter((item) => item.action === "skipped").length
   };
 }
