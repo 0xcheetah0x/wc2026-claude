@@ -3787,7 +3787,7 @@ const productionMatchesAdapter={
   getMatches:()=>MATCHES,
   loadMatches:async()=>{
     const rows=await supabaseRead('matches','select=id,group_code,stage,home_team,away_team,home_seeded,away_seeded,kickoff_at,city&order=id.asc');
-    const mapped=rows.map(mapSupabaseMatch).filter(m=>m.id&&m.h&&m.a&&m.utc);
+    const mapped=rows.map(mapSupabaseMatch).filter(m=>m.id&&m.h&&m.a&&m.utc&&!hasPlaceholderMatchTeam(m));
     if(mapped.length>0) MATCHES=mapped;
     return MATCHES;
   }
@@ -3871,6 +3871,24 @@ const getLockPct=(m,now)=>{
   if(ms<warnAt) return 0;
   return Math.min(100,((ms-warnAt)/(lockAt-warnAt))*100);
 };
+const MATCH_STAGE_LABELS={
+  round_32:'R32',
+  round_16:'R16',
+  quarter_final:'QF',
+  semi_final:'SF',
+  third_place:'3RD',
+  final:'FINAL'
+};
+const matchStageLabel=m=>{
+  const stage=String(m?.stage||'group');
+  if(stage==='group') return `GRP ${m?.grp||''}`.trim();
+  return MATCH_STAGE_LABELS[stage]||stage.replace(/_/g,' ').toLocaleUpperCase('tr-TR');
+};
+const isPlaceholderTeamName=name=>{
+  const normalized=String(name||'').trim().toLowerCase().replace(/\s+/g,'');
+  return !normalized||['tbd','tba','tbc','unknown','tobedetermined'].includes(normalized);
+};
+const hasPlaceholderMatchTeam=m=>isPlaceholderTeamName(m?.h)||isPlaceholderTeamName(m?.a);
 
 const outcome=(h,a)=>h===a?'D':h>a?'H':'A';
 const winnerTeam=(m,sc)=>sc.h===sc.a?null:(sc.h>sc.a?m.h:m.a);
@@ -4412,7 +4430,7 @@ function MatchScoreboard({m,now,score,status,scoreClassName=''}) {
     <div className="mboard-top">
       <div className="mboard-left">
         {isLive&&<span className="mboard-live"><span className="mboard-dot"/>LIVE</span>}
-        <span className="mboard-grp">GRP {m.grp}</span>
+        <span className="mboard-grp">{matchStageLabel(m)}</span>
       </div>
       <div style={{textAlign:'right'}}>
         <div className="mboard-time">{fmtTR(m.utc)} TR</div>
@@ -5559,7 +5577,7 @@ function PredictionCard({m,pred,score,now,onSave,displayContext='default'}){
     {/* Status bar */}
     <div className={`pred-status-bar ${psbClass}`}>
       <span className="psb-txt">{isFinished?' TAMAMLANDI':locked?pred?' KİLİTLENDİ':'  TAHMİN GİRİLMEDİ':ls==='warn'?` KİLİTLENMEYE ${lockCd} KALDI`:` TAHMİN AÇIK`}</span>
-      <span style={{fontSize:10,opacity:.75}}>{fmtTR(m.utc)} TR · GRP {m.grp}</span>
+      <span style={{fontSize:10,opacity:.75}}>{fmtTR(m.utc)} TR · {matchStageLabel(m)}</span>
     </div>
 
     {/* Lock progress bar (only in warn state) */}
@@ -5672,7 +5690,7 @@ function PredHistory({preds,scores,totalPoints=0}){
         ><div className="prediction-history-card__content">
           <div className="hist-match">
             <div className="hist-teams" style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><WFlag team={m.h} size="sm"/><span>{m.h}</span><span>vs</span><WFlag team={m.a} size="sm"/><span>{m.a}</span></div>
-            <div className="hist-date">{fmtDateFull(m.utc)} · {fmtTR(m.utc)} TR · Grup {m.grp}</div>
+            <div className="hist-date">{fmtDateFull(m.utc)} · {fmtTR(m.utc)} TR · {matchStageLabel(m)}</div>
           </div>
           <div style={{textAlign:'center'}}>
             <div className="hist-label">TAHMİN</div>

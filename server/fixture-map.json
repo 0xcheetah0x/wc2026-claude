@@ -1189,5 +1189,293 @@
     ],
     "apiFixtureId": null,
     "footballDataMatchId": 537401
+  },
+  {
+    "id": 73,
+    "utc": "2026-06-28T19:00:00Z",
+    "home": "Güney Afrika",
+    "away": "Kanada",
+    "homeAliases": [
+      "Güney Afrika",
+      "South Africa",
+      "RSA"
+    ],
+    "awayAliases": [
+      "Kanada",
+      "Canada",
+      "CAN"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537417
+  },
+  {
+    "id": 74,
+    "utc": "2026-06-29T17:00:00Z",
+    "home": "Brezilya",
+    "away": "Japonya",
+    "homeAliases": [
+      "Brezilya",
+      "Brazil",
+      "BRA"
+    ],
+    "awayAliases": [
+      "Japonya",
+      "Japan",
+      "JPN"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537423
+  },
+  {
+    "id": 75,
+    "utc": "2026-06-29T20:30:00Z",
+    "home": "Almanya",
+    "away": "Paraguay",
+    "homeAliases": [
+      "Almanya",
+      "Germany",
+      "GER"
+    ],
+    "awayAliases": [
+      "Paraguay",
+      "PAR"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537415
+  },
+  {
+    "id": 76,
+    "utc": "2026-06-30T01:00:00Z",
+    "home": "Hollanda",
+    "away": "Fas",
+    "homeAliases": [
+      "Hollanda",
+      "Netherlands",
+      "NED"
+    ],
+    "awayAliases": [
+      "Fas",
+      "Morocco",
+      "MAR"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537418
+  },
+  {
+    "id": 77,
+    "utc": "2026-06-30T17:00:00Z",
+    "home": "Fildişi Sah.",
+    "away": "Norveç",
+    "homeAliases": [
+      "Fildişi Sah.",
+      "Ivory Coast",
+      "CIV"
+    ],
+    "awayAliases": [
+      "Norveç",
+      "Norway",
+      "NOR"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537424
+  },
+  {
+    "id": 78,
+    "utc": "2026-06-30T21:00:00Z",
+    "home": "Fransa",
+    "away": "İsveç",
+    "homeAliases": [
+      "Fransa",
+      "France",
+      "FRA"
+    ],
+    "awayAliases": [
+      "İsveç",
+      "Sweden",
+      "SWE"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537416
+  },
+  {
+    "id": 79,
+    "utc": "2026-07-01T01:00:00Z",
+    "home": "Meksika",
+    "away": "Ekvador",
+    "homeAliases": [
+      "Meksika",
+      "Mexico",
+      "MEX"
+    ],
+    "awayAliases": [
+      "Ekvador",
+      "Ecuador",
+      "ECU"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537425
+  },
+  {
+    "id": 80,
+    "utc": "2026-07-01T16:00:00Z",
+    "home": "İngiltere",
+    "away": "Kongo",
+    "homeAliases": [
+      "İngiltere",
+      "England",
+      "ENG"
+    ],
+    "awayAliases": [
+      "Kongo",
+      "Congo DR",
+      "COD"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537426
+  },
+  {
+    "id": 81,
+    "utc": "2026-07-01T20:00:00Z",
+    "home": "Belçika",
+    "away": "Senegal",
+    "homeAliases": [
+      "Belçika",
+      "Belgium",
+      "BEL"
+    ],
+    "awayAliases": [
+      "Senegal",
+      "SEN"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537422
+  },
+  {
+    "id": 82,
+    "utc": "2026-07-02T00:00:00Z",
+    "home": "ABD",
+    "away": "Bosna Hersek",
+    "homeAliases": [
+      "ABD",
+      "United States",
+      "USA"
+    ],
+    "awayAliases": [
+      "Bosna Hersek",
+      "Bosnia-Herzegovina",
+      "Bosnia-H.",
+      "BIH"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537421
+  },
+  {
+    "id": 83,
+    "utc": "2026-07-02T19:00:00Z",
+    "home": "İspanya",
+    "away": "Avusturya",
+    "homeAliases": [
+      "İspanya",
+      "Spain",
+      "ESP"
+    ],
+    "awayAliases": [
+      "Avusturya",
+      "Austria",
+      "AUT"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537420
+  },
+  {
+    "id": 84,
+    "utc": "2026-07-02T23:00:00Z",
+    "home": "Portekiz",
+    "away": "Hırvatistan",
+    "homeAliases": [
+      "Portekiz",
+      "Portugal",
+      "POR"
+    ],
+    "awayAliases": [
+      "Hırvatistan",
+      "Croatia",
+      "CRO"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537419
+  },
+  {
+    "id": 85,
+    "utc": "2026-07-03T03:00:00Z",
+    "home": "İsviçre",
+    "away": "Cezayir",
+    "homeAliases": [
+      "İsviçre",
+      "Switzerland",
+      "SUI"
+    ],
+    "awayAliases": [
+      "Cezayir",
+      "Algeria",
+      "ALG"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537429
+  },
+  {
+    "id": 86,
+    "utc": "2026-07-03T18:00:00Z",
+    "home": "Avustralya",
+    "away": "Mısır",
+    "homeAliases": [
+      "Avustralya",
+      "Australia",
+      "AUS"
+    ],
+    "awayAliases": [
+      "Mısır",
+      "Egypt",
+      "EGY"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537428
+  },
+  {
+    "id": 87,
+    "utc": "2026-07-03T22:00:00Z",
+    "home": "Arjantin",
+    "away": "Yeşil Burun A.",
+    "homeAliases": [
+      "Arjantin",
+      "Argentina",
+      "ARG"
+    ],
+    "awayAliases": [
+      "Yeşil Burun A.",
+      "Cape Verde Islands",
+      "Cape Verde",
+      "CPV"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537427
+  },
+  {
+    "id": 88,
+    "utc": "2026-07-04T01:30:00Z",
+    "home": "Kolombiya",
+    "away": "Gana",
+    "homeAliases": [
+      "Kolombiya",
+      "Colombia",
+      "COL"
+    ],
+    "awayAliases": [
+      "Gana",
+      "Ghana",
+      "GHA"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537430
   }
 ]

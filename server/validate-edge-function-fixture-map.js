@@ -4,7 +4,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const EXPECTED_COUNT = 72;
+const MIN_EXPECTED_COUNT = 72;
+const MAX_EXPECTED_COUNT = 104;
 const sourcePath = path.join(__dirname, "fixture-map.json");
 const edgePath = path.join(
   __dirname,
@@ -46,11 +47,13 @@ function main() {
     return;
   }
 
-  if (source.length !== EXPECTED_COUNT) {
-    errors.push(`Authoritative fixture map must contain ${EXPECTED_COUNT} entries; found ${source.length}.`);
+  if (source.length < MIN_EXPECTED_COUNT || source.length > MAX_EXPECTED_COUNT) {
+    errors.push(
+      `Authoritative fixture map must contain ${MIN_EXPECTED_COUNT}-${MAX_EXPECTED_COUNT} entries; found ${source.length}.`
+    );
   }
-  if (edge.length !== EXPECTED_COUNT) {
-    errors.push(`Edge Function fixture map must contain ${EXPECTED_COUNT} entries; found ${edge.length}.`);
+  if (edge.length !== source.length) {
+    errors.push(`Edge Function fixture map must contain ${source.length} entries; found ${edge.length}.`);
   }
 
   const sourceByInternalId = new Map();
@@ -130,7 +133,7 @@ function main() {
   }
 
   console.log(
-    `[edge-fixture-map] Validated ${EXPECTED_COUNT} unique Edge Function mappings against server/fixture-map.json.`
+    `[edge-fixture-map] Validated ${source.length} unique Edge Function mappings against server/fixture-map.json.`
   );
 }
 
