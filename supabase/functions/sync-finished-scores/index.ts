@@ -1,5 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import fixtureMap from "./fixture-map.json" with { type: "json" };
+import {
+  extractPredictionScoreFromFootballData,
+  normalizeFootballDataStage,
+  type FootballDataMatchForScore,
+} from "./score-policy.ts";
 
 const PROVIDER = "football-data";
 const PROVIDER_URL =
@@ -50,6 +55,14 @@ type ScoreConflict = {
   action: "skipped";
 };
 
+type ScoreWarning = {
+  match_id: number;
+  provider_match_id: number;
+  stage: string | null;
+  reason: string;
+  action: "skipped";
+};
+
 type SyncReport = {
   provider: typeof PROVIDER;
   dry_run: boolean;
@@ -63,6 +76,7 @@ type SyncReport = {
   corrected_count: number;
   conflict_count: number;
   conflicts: ScoreConflict[];
+  warnings: ScoreWarning[];
   skipped_count: number;
   live_write_enabled: false;
   messages: string[];
@@ -89,6 +103,7 @@ function report(overrides: Partial<SyncReport> = {}): SyncReport {
     corrected_count: 0,
     conflict_count: 0,
     conflicts: [],
+    warnings: [],
     skipped_count: 0,
     live_write_enabled: false,
     messages: [],
@@ -280,13 +295,15 @@ Deno.serve(async (request: Request): Promise<Response> => {
   let skippedCount = 0;
   let liveCount = 0;
   let upcomingCount = 0;
+  const warnings: ScoreWarning[] = [];
 
   for (const value of providerMatches) {
     if (!value || typeof value !== "object") continue;
 
-    const fixture = value as {
+    const fixture = value as FootballDataMatchForScore & {
       id?: unknown;
       status?: unknown;
+      stage?: unknown;
       homeTeam?: {
         name?: unknown;
         shortName?: unknown;
@@ -296,12 +313,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
         name?: unknown;
         shortName?: unknown;
         tla?: unknown;
-      };
-      score?: {
-        fullTime?: {
-          home?: unknown;
-          away?: unknown;
-        };
       };
     };
     const providerMatchId = Number(fixture.id);
@@ -328,12 +339,35 @@ Deno.serve(async (request: Request): Promise<Response> => {
       continue;
     }
 
-    const homeScore = fixture.score?.fullTime?.home;
-    const awayScore = fixture.score?.fullTime?.away;
+    const predictionScore = extractPredictionScoreFromFootballData(fixture);
+    if (!predictionScore.ok) {
+      skippedCount += 1;
+      warnings.push({
+        match_id: internalMatchId,
+        provider_match_id: providerMatchId,
+        stage: normalizeFootballDataStage(fixture.stage),
+        reason: predictionScore.reason,
+        action: "skipped",
+      });
+      messages.push(
+        `Match ${internalMatchId}: ${predictionScore.message}`,
+      );
+      continue;
+    }
+
+    const homeScore = predictionScore.home_score;
+    const awayScore = predictionScore.away_score;
     if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
       skippedCount += 1;
+      warnings.push({
+        match_id: internalMatchId,
+        provider_match_id: providerMatchId,
+        stage: normalizeFootballDataStage(fixture.stage),
+        reason: "invalid_extracted_prediction_score",
+        action: "skipped",
+      });
       messages.push(
-        `Match ${internalMatchId}: Finished fixture is missing full-time score; retry on next scheduled invocation.`,
+        `Match ${internalMatchId}: extracted prediction score is outside the allowed range.`,
       );
       continue;
     }
@@ -403,6 +437,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
           mapped_fixture_count: mappedFixtureCount,
           valid_finished_count: validRows.length,
           skipped_count: skippedCount,
+          warnings,
           messages: [...messages, "Existing score reconciliation failed."],
         }),
         502,
@@ -487,6 +522,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
           corrected_count: correctedCount,
           conflict_count: conflictCount,
           conflicts,
+          warnings,
           skipped_count: skippedCount,
           messages: [...messages, "Finished-score upsert failed."],
         }),
@@ -514,6 +550,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       corrected_count: correctedCount,
       conflict_count: conflictCount,
       conflicts,
+      warnings,
       skipped_count: skippedCount,
       messages,
     }),

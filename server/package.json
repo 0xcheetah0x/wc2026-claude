@@ -10,6 +10,7 @@
     "set:champion-winner": "node set-champion-winner.js",
     "sync:knockout:dry-run": "node sync-knockout-fixtures.js --dry-run",
     "test:sync-knockout-fixtures": "node sync-knockout-fixtures.test.js",
+    "test:update-scores": "node update-scores.test.js",
     "check:football-data": "node check-football-data.js",
     "validate:edge-fixture-map": "node validate-edge-function-fixture-map.js",
     "update:scores:football-data:dry-run": "node -e \"process.env.SCORE_PROVIDER='football-data';process.env.DRY_RUN='1';const u=require('./update-scores');delete process.env.MATCH_DATE;u.main().catch(u.handleCliError)\"",
