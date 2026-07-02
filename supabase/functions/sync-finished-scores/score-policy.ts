@@ -8,6 +8,7 @@ export type FootballDataScoreValue = {
 export type FootballDataMatchForScore = {
   status?: unknown;
   stage?: unknown;
+  duration?: unknown;
   score?: {
     duration?: unknown;
     fullTime?: FootballDataScoreValue;
@@ -35,6 +36,14 @@ export type PredictionScoreExtraction =
         | "missing_regular_time_score_for_knockout"
         | "unsupported_duration";
       message: string;
+      duration: string | null;
+      available_score_fields: {
+        fullTime: FootballDataScoreValue;
+        regularTime: FootballDataScoreValue;
+        extraTime: FootballDataScoreValue;
+        penalties: FootballDataScoreValue;
+        winner: unknown;
+      };
     };
 
 function optionalScoreInt(value: unknown): number | null {
@@ -83,28 +92,44 @@ export function normalizeFootballDataStage(stage: unknown): string | null {
 export function extractPredictionScoreFromFootballData(
   match: FootballDataMatchForScore,
 ): PredictionScoreExtraction {
-  const status = String(match?.status ?? "").toUpperCase();
-  if (status !== "FINISHED") {
+  const score = match?.score;
+  const duration = String(match?.duration ?? score?.duration ?? "").trim().toUpperCase();
+  const available_score_fields = {
+    fullTime: score?.fullTime ?? null,
+    regularTime: score?.regularTime ?? null,
+    extraTime: score?.extraTime ?? null,
+    penalties: score?.penalties ?? null,
+    winner: score?.winner ?? null,
+  };
+
+  function skipped(
+    reason: Extract<PredictionScoreExtraction, { ok: false }>["reason"],
+    message: string,
+  ): PredictionScoreExtraction {
     return {
       ok: false,
-      reason: "match_not_finished",
-      message: "Match is not finished.",
+      reason,
+      message,
+      duration: duration || null,
+      available_score_fields,
     };
   }
 
-  const score = match?.score;
-  const duration = String(score?.duration ?? "").trim().toUpperCase();
+  const status = String(match?.status ?? "").toUpperCase();
+  if (status !== "FINISHED") {
+    return skipped("match_not_finished", "Match is not finished.");
+  }
+
   const normalizedStage = normalizeFootballDataStage(match?.stage);
   const groupStage = normalizedStage === "group";
   const regularDurations = new Set(["REGULAR", "NORMAL"]);
   const extendedDurations = new Set(["EXTRA_TIME", "PENALTY_SHOOTOUT"]);
 
   if (!duration && !groupStage) {
-    return {
-      ok: false,
-      reason: "unknown_duration_for_knockout",
-      message: "Finished non-group fixture is missing duration; score write skipped.",
-    };
+    return skipped(
+      "unknown_duration_for_knockout",
+      "Finished non-group fixture is missing duration; score write skipped.",
+    );
   }
 
   if (!duration || regularDurations.has(duration)) {
@@ -119,11 +144,10 @@ export function extractPredictionScoreFromFootballData(
       };
     }
 
-    return {
-      ok: false,
-      reason: "missing_full_time_score",
-      message: "Finished fixture is missing full-time score; retry on next scheduled invocation.",
-    };
+    return skipped(
+      "missing_full_time_score",
+      "Finished fixture is missing full-time score; retry on next scheduled invocation.",
+    );
   }
 
   if (extendedDurations.has(duration)) {
@@ -138,16 +162,14 @@ export function extractPredictionScoreFromFootballData(
       };
     }
 
-    return {
-      ok: false,
-      reason: "missing_regular_time_score_for_knockout",
-      message: "Finished knockout fixture lacks a reliable 90-minute regular-time score; score write skipped.",
-    };
+    return skipped(
+      "missing_regular_time_score_for_knockout",
+      "Finished knockout fixture lacks a reliable 90-minute regular-time score; score write skipped.",
+    );
   }
 
-  return {
-    ok: false,
-    reason: "unsupported_duration",
-    message: `Finished fixture has unsupported duration "${duration}".`,
-  };
+  return skipped(
+    "unsupported_duration",
+    `Finished fixture has unsupported duration "${duration}".`,
+  );
 }

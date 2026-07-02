@@ -53,12 +53,17 @@ type ScoreConflict = {
   provider_score: string;
   existing_source: string | null;
   action: "skipped";
+  reason?: string;
 };
 
 type ScoreWarning = {
   match_id: number;
   provider_match_id: number;
   stage: string | null;
+  home: string | null;
+  away: string | null;
+  duration: string | null;
+  available_score_fields: Record<string, unknown>;
   reason: string;
   action: "skipped";
 };
@@ -146,6 +151,30 @@ function providerTeamName(team: {
   return typeof candidate === "string" && candidate.trim()
     ? candidate.trim()
     : null;
+}
+
+function scoreWarningForFixture(
+  fixture: FootballDataMatchForScore & {
+    homeTeam?: Parameters<typeof providerTeamName>[0];
+    awayTeam?: Parameters<typeof providerTeamName>[0];
+  },
+  internalMatchId: number,
+  providerMatchId: number,
+  reason: string,
+  duration: string | null,
+  availableScoreFields: Record<string, unknown>,
+): ScoreWarning {
+  return {
+    match_id: internalMatchId,
+    provider_match_id: providerMatchId,
+    stage: normalizeFootballDataStage(fixture.stage),
+    home: providerTeamName(fixture.homeTeam),
+    away: providerTeamName(fixture.awayTeam),
+    duration,
+    available_score_fields: availableScoreFields,
+    reason,
+    action: "skipped",
+  };
 }
 
 async function readRequestBody(request: Request): Promise<Record<string, unknown>> {
@@ -342,13 +371,16 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const predictionScore = extractPredictionScoreFromFootballData(fixture);
     if (!predictionScore.ok) {
       skippedCount += 1;
-      warnings.push({
-        match_id: internalMatchId,
-        provider_match_id: providerMatchId,
-        stage: normalizeFootballDataStage(fixture.stage),
-        reason: predictionScore.reason,
-        action: "skipped",
-      });
+      warnings.push(
+        scoreWarningForFixture(
+          fixture,
+          internalMatchId,
+          providerMatchId,
+          predictionScore.reason,
+          predictionScore.duration,
+          predictionScore.available_score_fields as Record<string, unknown>,
+        ),
+      );
       messages.push(
         `Match ${internalMatchId}: ${predictionScore.message}`,
       );
@@ -359,13 +391,22 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const awayScore = predictionScore.away_score;
     if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
       skippedCount += 1;
-      warnings.push({
-        match_id: internalMatchId,
-        provider_match_id: providerMatchId,
-        stage: normalizeFootballDataStage(fixture.stage),
-        reason: "invalid_extracted_prediction_score",
-        action: "skipped",
-      });
+      warnings.push(
+        scoreWarningForFixture(
+          fixture,
+          internalMatchId,
+          providerMatchId,
+          "invalid_extracted_prediction_score",
+          predictionScore.duration,
+          {
+            fullTime: fixture.score?.fullTime ?? null,
+            regularTime: fixture.score?.regularTime ?? null,
+            extraTime: fixture.score?.extraTime ?? null,
+            penalties: fixture.score?.penalties ?? null,
+            winner: fixture.score?.winner ?? null,
+          },
+        ),
+      );
       messages.push(
         `Match ${internalMatchId}: extracted prediction score is outside the allowed range.`,
       );
@@ -471,6 +512,23 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     if (existingStatus === "finished" && existingScore === providerScore) {
       unchangedCount += 1;
+      continue;
+    }
+
+    if (String(existing.source ?? "").toLowerCase() === "manual") {
+      conflictCount += 1;
+      skippedCount += 1;
+      conflicts.push({
+        match_id: row.match_id,
+        provider_match_id: candidate.provider_match_id,
+        home: candidate.home,
+        away: candidate.away,
+        stored_score: existingScore,
+        provider_score: providerScore,
+        existing_source: existing.source ?? null,
+        action: "skipped",
+        reason: "Existing manual score row is protected from automatic overwrite.",
+      });
       continue;
     }
 

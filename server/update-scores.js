@@ -371,6 +371,16 @@ function footballDataScorePair(score) {
   return { home, away };
 }
 
+function footballDataScoreFields(score) {
+  return {
+    fullTime: score?.fullTime ?? null,
+    regularTime: score?.regularTime ?? null,
+    extraTime: score?.extraTime ?? null,
+    penalties: score?.penalties ?? null,
+    winner: score?.winner ?? null
+  };
+}
+
 function normalizeFootballDataStage(stage) {
   const value = String(stage || "").trim().toUpperCase();
   if (!value) return null;
@@ -393,28 +403,35 @@ function normalizeFootballDataStage(stage) {
 
 function extractPredictionScoreFromFootballData(match) {
   const status = String(match?.status || "").toUpperCase();
-  if (status !== "FINISHED") {
+  const score = match?.score || {};
+  const durationRaw = match?.duration ?? score?.duration;
+  const duration = String(durationRaw || "").trim().toUpperCase();
+  const scoreFields = footballDataScoreFields(score);
+
+  function skipped(reason, message) {
     return {
       ok: false,
-      reason: "match_not_finished",
-      message: "Match is not finished."
+      reason,
+      message,
+      duration: duration || null,
+      available_score_fields: scoreFields
     };
   }
 
-  const score = match?.score || {};
-  const durationRaw = score?.duration;
-  const duration = String(durationRaw || "").trim().toUpperCase();
+  if (status !== "FINISHED") {
+    return skipped("match_not_finished", "Match is not finished.");
+  }
+
   const normalizedStage = normalizeFootballDataStage(match?.stage);
   const groupStage = normalizedStage === "group";
   const regularDurations = new Set(["REGULAR", "NORMAL"]);
   const extendedDurations = new Set(["EXTRA_TIME", "PENALTY_SHOOTOUT"]);
 
   if (!duration && !groupStage) {
-    return {
-      ok: false,
-      reason: "unknown_duration_for_knockout",
-      message: "Finished non-group fixture is missing duration; score write skipped."
-    };
+    return skipped(
+      "unknown_duration_for_knockout",
+      "Finished non-group fixture is missing duration; score write skipped."
+    );
   }
 
   if (!duration || regularDurations.has(duration)) {
@@ -429,11 +446,10 @@ function extractPredictionScoreFromFootballData(match) {
       };
     }
 
-    return {
-      ok: false,
-      reason: "missing_full_time_score",
-      message: "Finished fixture is missing full-time score; retry on next run."
-    };
+    return skipped(
+      "missing_full_time_score",
+      "Finished fixture is missing full-time score; retry on next run."
+    );
   }
 
   if (extendedDurations.has(duration)) {
@@ -448,18 +464,16 @@ function extractPredictionScoreFromFootballData(match) {
       };
     }
 
-    return {
-      ok: false,
-      reason: "missing_regular_time_score_for_knockout",
-      message: "Finished knockout fixture lacks a reliable 90-minute regular-time score; score write skipped."
-    };
+    return skipped(
+      "missing_regular_time_score_for_knockout",
+      "Finished knockout fixture lacks a reliable 90-minute regular-time score; score write skipped."
+    );
   }
 
-  return {
-    ok: false,
-    reason: "unsupported_duration",
-    message: `Finished fixture has unsupported duration "${duration}".`
-  };
+  return skipped(
+    "unsupported_duration",
+    `Finished fixture has unsupported duration "${duration}".`
+  );
 }
 
 function mapStatus(short) {
@@ -786,6 +800,16 @@ function normalizeFixtureScore(fixture, internalMatch) {
         match_id: Number(internalMatch.id),
         provider_match_id: fixture?.fixture?.id ?? null,
         stage: normalizeFootballDataStage(fixture?.footballData?.stage),
+        home: fixture?.teams?.home?.name || null,
+        away: fixture?.teams?.away?.name || null,
+        duration: fixture?.footballData?.duration ?? predictionScore.duration ?? null,
+        available_score_fields: {
+          fullTime: fixture?.footballData?.fullTime ?? null,
+          regularTime: fixture?.footballData?.regularTime ?? null,
+          extraTime: fixture?.footballData?.extraTime ?? null,
+          penalties: fixture?.footballData?.penalties ?? null,
+          winner: fixture?.footballData?.winner ?? null
+        },
         reason: predictionScore.reason,
         action: "skipped"
       }
@@ -1038,7 +1062,7 @@ function adaptFootballDataMatch(match, config) {
       matchday: match?.matchday ?? null,
       stage: match?.stage ?? null,
       group: match?.group ?? null,
-      duration: match?.score?.duration ?? null,
+      duration: match?.duration ?? match?.score?.duration ?? null,
       fullTime: match?.score?.fullTime || null,
       regularTime: match?.score?.regularTime || null,
       extraTime: match?.score?.extraTime || null,
@@ -1629,6 +1653,19 @@ function reconcileFootballDataFinishedRows(providerRows, existingRows) {
         match_id: matchId,
         row: finishedRow,
         existing
+      });
+      continue;
+    }
+
+    if (String(existing.source || "").toLowerCase() === "manual") {
+      actions.push({
+        action: "conflict",
+        match_id: matchId,
+        row: finishedRow,
+        existing,
+        stored_score: existingScore,
+        provider_score: providerScore,
+        reason: "Existing manual score row is protected from automatic overwrite."
       });
       continue;
     }

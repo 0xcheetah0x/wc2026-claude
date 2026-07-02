@@ -25,6 +25,13 @@ const internalMatches = [
     a: "Canada",
     utc: "2026-06-28T19:00:00Z",
     stage: "round_32"
+  },
+  {
+    id: 81,
+    h: "Belgium",
+    a: "Senegal",
+    utc: "2026-07-01T20:00:00Z",
+    stage: "round_32"
   }
 ];
 
@@ -42,6 +49,13 @@ const fixtureMap = [
     home: "South Africa",
     away: "Canada",
     footballDataMatchId: 537417
+  },
+  {
+    id: 81,
+    utc: "2026-07-01T20:00:00Z",
+    home: "Belgium",
+    away: "Senegal",
+    footballDataMatchId: 537422
   }
 ];
 
@@ -105,6 +119,28 @@ function rowFromSingleMatch(match) {
 
 {
   const match = providerMatch({
+    id: 537422,
+    utcDate: "2026-07-01T20:00:00Z",
+    stage: "LAST_32",
+    duration: "EXTRA_TIME",
+    homeTeam: team("Belgium"),
+    awayTeam: team("Senegal"),
+    score: {
+      fullTime: { home: 3, away: 2 },
+      regularTime: { home: 2, away: 2 },
+      extraTime: { home: 1, away: 0 },
+      penalties: null,
+      winner: "HOME_TEAM"
+    }
+  });
+  const { row } = rowFromSingleMatch(match);
+  assert.strictEqual(row.match_id, 81);
+  assert.strictEqual(row.home_score, 2);
+  assert.strictEqual(row.away_score, 2);
+}
+
+{
+  const match = providerMatch({
     id: 537417,
     utcDate: "2026-06-28T19:00:00Z",
     stage: "LAST_32",
@@ -120,6 +156,35 @@ function rowFromSingleMatch(match) {
   const { row } = rowFromSingleMatch(match);
   assert.strictEqual(row.home_score, 0);
   assert.strictEqual(row.away_score, 0);
+}
+
+{
+  const match = providerMatch({
+    id: 537422,
+    utcDate: "2026-07-01T20:00:00Z",
+    stage: "LAST_32",
+    duration: "EXTRA_TIME",
+    homeTeam: team("Belgium"),
+    awayTeam: team("Senegal"),
+    score: {
+      fullTime: { home: 3, away: 2 },
+      regularTime: null,
+      extraTime: { home: 1, away: 0 }
+    }
+  });
+  const { plan } = rowFromSingleMatch(match);
+  assert.strictEqual(plan.rows.length, 0);
+  assert.strictEqual(plan.report.skipped.length, 1);
+  assert.strictEqual(
+    plan.report.skipped[0].reason,
+    "missing_regular_time_score_for_knockout"
+  );
+  assert.strictEqual(plan.report.skipped[0].provider_match_id, 537422);
+  assert.strictEqual(plan.report.skipped[0].duration, "EXTRA_TIME");
+  assert.deepStrictEqual(plan.report.skipped[0].available_score_fields.fullTime, {
+    home: 3,
+    away: 2
+  });
 }
 
 {
@@ -155,6 +220,50 @@ function rowFromSingleMatch(match) {
   assert.strictEqual(reconciliation.actions[0].action, "conflict");
   assert.strictEqual(reconciliation.actions[0].stored_score, "1-1");
   assert.strictEqual(reconciliation.actions[0].provider_score, "2-1");
+}
+
+{
+  const reconciliation = reconcileFootballDataFinishedRows(
+    [{ match_id: 81, home_score: 3, away_score: 2, status: "finished", minute: 90 }],
+    [
+      {
+        match_id: 81,
+        home_score: 2,
+        away_score: 2,
+        status: "finished",
+        minute: 90,
+        source: "manual"
+      }
+    ]
+  );
+  assert.strictEqual(reconciliation.rowsToWrite.length, 0);
+  assert.strictEqual(reconciliation.actions.length, 1);
+  assert.strictEqual(reconciliation.actions[0].action, "conflict");
+  assert.strictEqual(reconciliation.actions[0].existing.source, "manual");
+  assert.strictEqual(
+    reconciliation.actions[0].reason,
+    "Existing manual score row is protected from automatic overwrite."
+  );
+}
+
+{
+  const match = providerMatch({
+    id: 537422,
+    utcDate: "2026-07-01T20:00:00Z",
+    stage: "LAST_32",
+    duration: "PENALTY_SHOOTOUT",
+    homeTeam: team("Belgium"),
+    awayTeam: team("Senegal"),
+    score: {
+      regularTime: { home: 1, away: 1 },
+      fullTime: { home: 1, away: 1 },
+      penalties: { home: 4, away: 3 }
+    }
+  });
+  const { row } = rowFromSingleMatch(match);
+  assert.strictEqual(row.match_id, 81);
+  assert.strictEqual(row.home_score, 1);
+  assert.strictEqual(row.away_score, 1);
 }
 
 console.log("[update-scores:test] All mocked football-data score policy checks passed.");

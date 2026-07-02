@@ -45,6 +45,23 @@ Deno.test("extra-time knockout uses regularTime, not fullTime", () => {
   assertEquals(extracted.ok && [extracted.home_score, extracted.away_score], [1, 1]);
 });
 
+Deno.test("Belgium-Senegal extra-time payload uses top-level duration and regularTime", () => {
+  const extracted = extractPredictionScoreFromFootballData({
+    status: "FINISHED",
+    stage: "LAST_32",
+    duration: "EXTRA_TIME",
+    score: {
+      fullTime: { home: 3, away: 2 },
+      regularTime: { home: 2, away: 2 },
+      extraTime: { home: 1, away: 0 },
+      penalties: null,
+      winner: "HOME_TEAM",
+    },
+  });
+
+  assertEquals(extracted.ok && [extracted.home_score, extracted.away_score], [2, 2]);
+});
+
 Deno.test("penalty-shootout knockout uses regularTime, not penalties", () => {
   const extracted = extractPredictionScoreFromFootballData({
     status: "FINISHED",
@@ -76,5 +93,41 @@ Deno.test("missing regular-time score for extended knockout is skipped", () => {
     reason: "missing_regular_time_score_for_knockout",
     message:
       "Finished knockout fixture lacks a reliable 90-minute regular-time score; score write skipped.",
+    duration: "EXTRA_TIME",
+    available_score_fields: {
+      fullTime: { home: 2, away: 1 },
+      regularTime: null,
+      extraTime: null,
+      penalties: null,
+      winner: null,
+    },
+  });
+});
+
+Deno.test("Belgium-Senegal missing regularTime is skipped with available score fields", () => {
+  const extracted = extractPredictionScoreFromFootballData({
+    status: "FINISHED",
+    stage: "LAST_32",
+    duration: "EXTRA_TIME",
+    score: {
+      fullTime: { home: 3, away: 2 },
+      regularTime: null,
+      extraTime: { home: 1, away: 0 },
+    },
+  });
+
+  assertEquals(extracted, {
+    ok: false,
+    reason: "missing_regular_time_score_for_knockout",
+    message:
+      "Finished knockout fixture lacks a reliable 90-minute regular-time score; score write skipped.",
+    duration: "EXTRA_TIME",
+    available_score_fields: {
+      fullTime: { home: 3, away: 2 },
+      regularTime: null,
+      extraTime: { home: 1, away: 0 },
+      penalties: null,
+      winner: null,
+    },
   });
 });
