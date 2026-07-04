@@ -1477,5 +1477,148 @@
     ],
     "apiFixtureId": null,
     "footballDataMatchId": 537430
+  },
+  {
+    "id": 89,
+    "utc": "2026-07-04T17:00:00Z",
+    "home": "Kanada",
+    "away": "Fas",
+    "homeAliases": [
+      "Kanada",
+      "Canada",
+      "CAN"
+    ],
+    "awayAliases": [
+      "Fas",
+      "Morocco",
+      "MAR"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537376
+  },
+  {
+    "id": 90,
+    "utc": "2026-07-04T21:00:00Z",
+    "home": "Paraguay",
+    "away": "Fransa",
+    "homeAliases": [
+      "Paraguay",
+      "PAR"
+    ],
+    "awayAliases": [
+      "Fransa",
+      "France",
+      "FRA"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537375
+  },
+  {
+    "id": 91,
+    "utc": "2026-07-05T20:00:00Z",
+    "home": "Brezilya",
+    "away": "Norveç",
+    "homeAliases": [
+      "Brezilya",
+      "Brazil",
+      "BRA"
+    ],
+    "awayAliases": [
+      "Norveç",
+      "Norway",
+      "NOR"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537377
+  },
+  {
+    "id": 92,
+    "utc": "2026-07-06T00:00:00Z",
+    "home": "Meksika",
+    "away": "İngiltere",
+    "homeAliases": [
+      "Meksika",
+      "Mexico",
+      "MEX"
+    ],
+    "awayAliases": [
+      "İngiltere",
+      "England",
+      "ENG"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537378
+  },
+  {
+    "id": 93,
+    "utc": "2026-07-06T19:00:00Z",
+    "home": "Portekiz",
+    "away": "İspanya",
+    "homeAliases": [
+      "Portekiz",
+      "Portugal",
+      "POR"
+    ],
+    "awayAliases": [
+      "İspanya",
+      "Spain",
+      "ESP"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537379
+  },
+  {
+    "id": 94,
+    "utc": "2026-07-07T00:00:00Z",
+    "home": "ABD",
+    "away": "Belçika",
+    "homeAliases": [
+      "ABD",
+      "United States",
+      "USA"
+    ],
+    "awayAliases": [
+      "Belçika",
+      "Belgium",
+      "BEL"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537380
+  },
+  {
+    "id": 95,
+    "utc": "2026-07-07T16:00:00Z",
+    "home": "Arjantin",
+    "away": "Mısır",
+    "homeAliases": [
+      "Arjantin",
+      "Argentina",
+      "ARG"
+    ],
+    "awayAliases": [
+      "Mısır",
+      "Egypt",
+      "EGY"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537381
+  },
+  {
+    "id": 96,
+    "utc": "2026-07-07T20:00:00Z",
+    "home": "İsviçre",
+    "away": "Kolombiya",
+    "homeAliases": [
+      "İsviçre",
+      "Switzerland",
+      "SUI"
+    ],
+    "awayAliases": [
+      "Kolombiya",
+      "Colombia",
+      "COL"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537382
   }
 ]

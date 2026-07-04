@@ -574,5 +574,77 @@
     "utc": "2026-07-04T01:30:00Z",
     "city": "",
     "stage": "round_32"
+  },
+  {
+    "id": 89,
+    "grp": "",
+    "h": "Kanada",
+    "a": "Fas",
+    "utc": "2026-07-04T17:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 90,
+    "grp": "",
+    "h": "Paraguay",
+    "a": "Fransa",
+    "utc": "2026-07-04T21:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 91,
+    "grp": "",
+    "h": "Brezilya",
+    "a": "Norveç",
+    "utc": "2026-07-05T20:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 92,
+    "grp": "",
+    "h": "Meksika",
+    "a": "İngiltere",
+    "utc": "2026-07-06T00:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 93,
+    "grp": "",
+    "h": "Portekiz",
+    "a": "İspanya",
+    "utc": "2026-07-06T19:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 94,
+    "grp": "",
+    "h": "ABD",
+    "a": "Belçika",
+    "utc": "2026-07-07T00:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 95,
+    "grp": "",
+    "h": "Arjantin",
+    "a": "Mısır",
+    "utc": "2026-07-07T16:00:00Z",
+    "city": "",
+    "stage": "round_16"
+  },
+  {
+    "id": 96,
+    "grp": "",
+    "h": "İsviçre",
+    "a": "Kolombiya",
+    "utc": "2026-07-07T20:00:00Z",
+    "city": "",
+    "stage": "round_16"
   }
 ]
