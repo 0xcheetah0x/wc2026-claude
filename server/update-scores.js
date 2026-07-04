@@ -632,6 +632,8 @@ function matchFromAliases(fixture, matches, entries) {
 
 function providerFixtureSummary(fixture) {
   const stage = fixture?.footballData?.stage ?? null;
+  const topLevelDuration = fixture?.footballData?.topLevelDuration ?? null;
+  const scoreDuration = fixture?.footballData?.scoreDuration ?? null;
   return {
     provider: fixtureProvider(fixture),
     providerFixtureId: fixture?.fixture?.id ?? null,
@@ -640,7 +642,12 @@ function providerFixtureSummary(fixture) {
     fixtureUtc: fixture?.fixture?.date || null,
     stage: normalizeFootballDataStage(stage),
     providerStage: stage,
-    duration: fixture?.footballData?.duration ?? null
+    duration: fixture?.footballData?.duration ?? null,
+    durationFields: {
+      top_level: topLevelDuration,
+      score: scoreDuration,
+      selected: fixture?.footballData?.duration ?? null
+    }
   };
 }
 
@@ -803,6 +810,11 @@ function normalizeFixtureScore(fixture, internalMatch) {
         home: fixture?.teams?.home?.name || null,
         away: fixture?.teams?.away?.name || null,
         duration: fixture?.footballData?.duration ?? predictionScore.duration ?? null,
+        duration_fields: {
+          top_level: fixture?.footballData?.topLevelDuration ?? null,
+          score: fixture?.footballData?.scoreDuration ?? null,
+          selected: fixture?.footballData?.duration ?? predictionScore.duration ?? null
+        },
         available_score_fields: {
           fullTime: fixture?.footballData?.fullTime ?? null,
           regularTime: fixture?.footballData?.regularTime ?? null,
@@ -846,6 +858,7 @@ function normalizeFixtureScore(fixture, internalMatch) {
 function buildScorePlan(fixtures, matches, fixtureMap = {}) {
   const rowsByMatchId = new Map();
   const previewByMatchId = new Map();
+  const syncMetadataByMatchId = new Map();
   const report = {
     providerFixturesFetched: fixtures.length,
     mapped: [],
@@ -913,14 +926,30 @@ function buildScorePlan(fixtures, matches, fixtureMap = {}) {
       provider_fixture_id: summary.providerFixtureId,
       mapped_by: mapping.mappedBy
     };
+    const syncMetadata = {
+      match_id: row.match_id,
+      provider_match_id: summary.providerFixtureId,
+      provider_fixture_id: summary.providerFixtureId,
+      home: summary.providerHome,
+      away: summary.providerAway,
+      internal_home: internalMatch.h || internalMatch.home || null,
+      internal_away: internalMatch.a || internalMatch.away || null,
+      stage: summary.stage,
+      provider_stage: summary.providerStage,
+      duration: summary.duration,
+      duration_fields: summary.durationFields,
+      mapped_by: mapping.mappedBy
+    };
 
     rowsByMatchId.set(row.match_id, row);
     previewByMatchId.set(row.match_id, preview);
+    syncMetadataByMatchId.set(row.match_id, syncMetadata);
   }
 
   return {
     rows: Array.from(rowsByMatchId.values()).sort((a, b) => a.match_id - b.match_id),
     previewRows: Array.from(previewByMatchId.values()).sort((a, b) => a.match_id - b.match_id),
+    syncMetadataByMatchId,
     report
   };
 }
@@ -1062,6 +1091,8 @@ function adaptFootballDataMatch(match, config) {
       matchday: match?.matchday ?? null,
       stage: match?.stage ?? null,
       group: match?.group ?? null,
+      topLevelDuration: match?.duration ?? null,
+      scoreDuration: match?.score?.duration ?? null,
       duration: match?.duration ?? match?.score?.duration ?? null,
       fullTime: match?.score?.fullTime || null,
       regularTime: match?.score?.regularTime || null,
@@ -1596,7 +1627,58 @@ async function fetchExistingScoresFromSupabase(rows, config) {
   return payload;
 }
 
-function reconcileFootballDataFinishedRows(providerRows, existingRows) {
+function metadataForMatch(metadataByMatchId, matchId) {
+  if (!metadataByMatchId) return {};
+  if (metadataByMatchId instanceof Map) return metadataByMatchId.get(matchId) || {};
+  if (typeof metadataByMatchId === "object") {
+    return metadataByMatchId[matchId] || metadataByMatchId[String(matchId)] || {};
+  }
+  return {};
+}
+
+function scoreConflictAction({
+  matchId,
+  row,
+  existing,
+  storedScore,
+  providerScore,
+  reason,
+  metadata
+}) {
+  const durationFields =
+    metadata?.duration_fields ||
+    metadata?.durationFields ||
+    {
+      top_level: metadata?.topLevelDuration ?? null,
+      score: metadata?.scoreDuration ?? null,
+      selected: metadata?.duration ?? null
+    };
+
+  return {
+    action: "conflict",
+    manual_review_required: true,
+    match_id: matchId,
+    provider_match_id: metadata?.provider_match_id ?? metadata?.providerFixtureId ?? null,
+    provider_fixture_id: metadata?.provider_fixture_id ?? metadata?.provider_match_id ?? null,
+    home: metadata?.home ?? metadata?.providerHome ?? null,
+    away: metadata?.away ?? metadata?.providerAway ?? null,
+    internal_home: metadata?.internal_home ?? null,
+    internal_away: metadata?.internal_away ?? null,
+    stage: metadata?.stage ?? null,
+    provider_stage: metadata?.provider_stage ?? null,
+    duration: metadata?.duration ?? durationFields.selected ?? null,
+    duration_fields: durationFields,
+    source: existing?.source ?? null,
+    existing_source: existing?.source ?? null,
+    row,
+    existing,
+    stored_score: storedScore,
+    provider_score: providerScore,
+    reason
+  };
+}
+
+function reconcileFootballDataFinishedRows(providerRows, existingRows, metadataByMatchId = new Map()) {
   const existingByMatchId = new Map(
     existingRows.map((row) => [Number(row.match_id), row])
   );
@@ -1646,6 +1728,7 @@ function reconcileFootballDataFinishedRows(providerRows, existingRows) {
     const existingStatus = String(existing.status || "").toLowerCase();
     const existingScore = `${Number(existing.home_score)}-${Number(existing.away_score)}`;
     const providerScore = `${finishedRow.home_score}-${finishedRow.away_score}`;
+    const metadata = metadataForMatch(metadataByMatchId, matchId);
 
     if (existingStatus === "finished" && existingScore === providerScore) {
       actions.push({
@@ -1658,28 +1741,30 @@ function reconcileFootballDataFinishedRows(providerRows, existingRows) {
     }
 
     if (String(existing.source || "").toLowerCase() === "manual") {
-      actions.push({
-        action: "conflict",
+      actions.push(scoreConflictAction({
         match_id: matchId,
+        matchId,
         row: finishedRow,
         existing,
-        stored_score: existingScore,
-        provider_score: providerScore,
-        reason: "Existing manual score row is protected from automatic overwrite."
-      });
+        storedScore: existingScore,
+        providerScore,
+        reason: "Existing manual score row is protected from automatic overwrite.",
+        metadata
+      }));
       continue;
     }
 
     if (existingStatus === "finished") {
-      actions.push({
-        action: "conflict",
+      actions.push(scoreConflictAction({
         match_id: matchId,
+        matchId,
         row: finishedRow,
         existing,
-        stored_score: existingScore,
-        provider_score: providerScore,
-        reason: "Stored final score differs from provider final score; automatic overwrite skipped."
-      });
+        storedScore: existingScore,
+        providerScore,
+        reason: "Stored final score differs from provider final score; automatic overwrite skipped.",
+        metadata
+      }));
       continue;
     }
 
@@ -1713,34 +1798,67 @@ function logFootballDataSyncActions(actions) {
       );
     } else if (item.action === "conflict") {
       warn(
-        `Match ${item.match_id}: conflict skipped; stored final ${item.stored_score}, provider final ${item.provider_score}.`
+        `Match ${item.match_id}: conflict skipped; stored final ${item.stored_score}, provider final ${item.provider_score}. Manual review required.`
       );
+      console.warn(JSON.stringify({
+        manual_review_required: item.manual_review_required,
+        match_id: item.match_id,
+        provider_match_id: item.provider_match_id,
+        home: item.home,
+        away: item.away,
+        internal_home: item.internal_home,
+        internal_away: item.internal_away,
+        stored_score: item.stored_score,
+        provider_score: item.provider_score,
+        source: item.source,
+        stage: item.stage,
+        provider_stage: item.provider_stage,
+        duration: item.duration,
+        duration_fields: item.duration_fields,
+        reason: item.reason
+      }, null, 2));
     } else {
       warn(`Match ${item.match_id}: skipped. ${item.reason}`);
     }
   }
 }
 
-async function syncFootballDataFinishedScores(rows, config) {
+async function syncFootballDataFinishedScores(rows, config, metadataByMatchId = new Map()) {
   if (!rows.length) {
     log("No finished football-data score rows to reconcile.");
-    return { written: 0, inserted: 0, unchanged: 0, corrected: 0, conflict: 0, skipped: 0 };
+    return {
+      written: 0,
+      inserted: 0,
+      unchanged: 0,
+      corrected: 0,
+      conflict: 0,
+      conflict_count: 0,
+      conflicts: [],
+      skipped: 0
+    };
   }
 
   const existingRows = await fetchExistingScoresFromSupabase(rows, config);
-  const reconciliation = reconcileFootballDataFinishedRows(rows, existingRows);
+  const reconciliation = reconcileFootballDataFinishedRows(
+    rows,
+    existingRows,
+    metadataByMatchId
+  );
   const writeResult = await upsertScoresToSupabase(
     reconciliation.rowsToWrite,
     config
   );
   logFootballDataSyncActions(reconciliation.actions);
+  const conflicts = reconciliation.actions.filter((item) => item.action === "conflict");
 
   return {
     written: writeResult.written,
     inserted: reconciliation.actions.filter((item) => item.action === "inserted").length,
     unchanged: reconciliation.actions.filter((item) => item.action === "unchanged").length,
     corrected: reconciliation.actions.filter((item) => item.action === "corrected").length,
-    conflict: reconciliation.actions.filter((item) => item.action === "conflict").length,
+    conflict: conflicts.length,
+    conflict_count: conflicts.length,
+    conflicts,
     skipped: reconciliation.actions.filter((item) => item.action === "skipped").length
   };
 }
@@ -1805,7 +1923,7 @@ async function main() {
   printScoreReport({ config, matchesToCheck, fetchResult, plan, budgetBefore, budgetAfter });
   const result =
     config.scoreProvider === FOOTBALL_DATA_PROVIDER && !config.dryRun
-      ? await syncFootballDataFinishedScores(plan.rows, config)
+      ? await syncFootballDataFinishedScores(plan.rows, config, plan.syncMetadataByMatchId)
       : await upsertScoresToSupabase(plan.rows, config);
   return { ok: true, rows: plan.rows, report: plan.report, result };
 }

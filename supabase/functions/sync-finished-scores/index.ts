@@ -3,7 +3,10 @@ import fixtureMap from "./fixture-map.json" with { type: "json" };
 import {
   extractPredictionScoreFromFootballData,
   normalizeFootballDataStage,
+  reconcileFinishedScore,
+  type FinishedScoreConflict,
   type FootballDataMatchForScore,
+  type ScoreDurationFields,
 } from "./score-policy.ts";
 
 const PROVIDER = "football-data";
@@ -41,19 +44,11 @@ type FinishedScoreCandidate = {
   provider_match_id: number;
   home: string | null;
   away: string | null;
+  stage: string | null;
+  provider_stage: string | null;
+  duration: string | null;
+  duration_fields: ScoreDurationFields;
   row: ScoreRow;
-};
-
-type ScoreConflict = {
-  match_id: number;
-  provider_match_id: number;
-  home: string | null;
-  away: string | null;
-  stored_score: string;
-  provider_score: string;
-  existing_source: string | null;
-  action: "skipped";
-  reason?: string;
 };
 
 type ScoreWarning = {
@@ -80,7 +75,7 @@ type SyncReport = {
   unchanged_count: number;
   corrected_count: number;
   conflict_count: number;
-  conflicts: ScoreConflict[];
+  conflicts: FinishedScoreConflict[];
   warnings: ScoreWarning[];
   skipped_count: number;
   live_write_enabled: false;
@@ -421,10 +416,23 @@ Deno.serve(async (request: Request): Promise<Response> => {
       continue;
     }
 
+    const durationFields: ScoreDurationFields = {
+      top_level: fixture.duration ?? null,
+      score: fixture.score?.duration ?? null,
+      selected: predictionScore.duration,
+    };
+
     validRowsByMatchId.set(internalMatchId, {
       provider_match_id: providerMatchId,
       home: providerTeamName(fixture.homeTeam),
       away: providerTeamName(fixture.awayTeam),
+      stage: normalizeFootballDataStage(fixture.stage),
+      provider_stage:
+        typeof fixture.stage === "string" && fixture.stage.trim()
+          ? fixture.stage.trim()
+          : null,
+      duration: predictionScore.duration,
+      duration_fields: durationFields,
       row: {
         match_id: internalMatchId,
         home_score: homeScore,
@@ -491,7 +499,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     existingRows.map((row) => [Number(row.match_id), row]),
   );
   const rowsToWrite: ScoreRow[] = [];
-  const conflicts: ScoreConflict[] = [];
+  const conflicts: FinishedScoreConflict[] = [];
   let insertedCount = 0;
   let unchangedCount = 0;
   let correctedCount = 0;
@@ -500,51 +508,32 @@ Deno.serve(async (request: Request): Promise<Response> => {
   for (const candidate of validRows) {
     const row = candidate.row;
     const existing = existingByMatchId.get(row.match_id);
-    if (!existing) {
+    const reconciliation = reconcileFinishedScore(row, existing ?? null, {
+      provider_match_id: candidate.provider_match_id,
+      provider_fixture_id: candidate.provider_match_id,
+      home: candidate.home,
+      away: candidate.away,
+      stage: candidate.stage,
+      provider_stage: candidate.provider_stage,
+      duration: candidate.duration,
+      duration_fields: candidate.duration_fields,
+    });
+
+    if (reconciliation.action === "inserted") {
       insertedCount += 1;
       rowsToWrite.push(row);
       continue;
     }
 
-    const existingStatus = String(existing.status).toLowerCase();
-    const existingScore = `${Number(existing.home_score)}-${Number(existing.away_score)}`;
-    const providerScore = `${row.home_score}-${row.away_score}`;
-
-    if (existingStatus === "finished" && existingScore === providerScore) {
+    if (reconciliation.action === "unchanged") {
       unchangedCount += 1;
       continue;
     }
 
-    if (String(existing.source ?? "").toLowerCase() === "manual") {
+    if (reconciliation.action === "conflict") {
       conflictCount += 1;
       skippedCount += 1;
-      conflicts.push({
-        match_id: row.match_id,
-        provider_match_id: candidate.provider_match_id,
-        home: candidate.home,
-        away: candidate.away,
-        stored_score: existingScore,
-        provider_score: providerScore,
-        existing_source: existing.source ?? null,
-        action: "skipped",
-        reason: "Existing manual score row is protected from automatic overwrite.",
-      });
-      continue;
-    }
-
-    if (existingStatus === "finished") {
-      conflictCount += 1;
-      skippedCount += 1;
-      conflicts.push({
-        match_id: row.match_id,
-        provider_match_id: candidate.provider_match_id,
-        home: candidate.home,
-        away: candidate.away,
-        stored_score: existingScore,
-        provider_score: providerScore,
-        existing_source: existing.source ?? null,
-        action: "skipped",
-      });
+      conflicts.push(reconciliation.conflict);
       continue;
     }
 

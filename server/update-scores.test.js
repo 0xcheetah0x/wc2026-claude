@@ -32,6 +32,13 @@ const internalMatches = [
     a: "Senegal",
     utc: "2026-07-01T20:00:00Z",
     stage: "round_32"
+  },
+  {
+    id: 88,
+    h: "Kolombiya",
+    a: "Gana",
+    utc: "2026-07-04T01:30:00Z",
+    stage: "round_32"
   }
 ];
 
@@ -56,6 +63,15 @@ const fixtureMap = [
     home: "Belgium",
     away: "Senegal",
     footballDataMatchId: 537422
+  },
+  {
+    id: 88,
+    utc: "2026-07-04T01:30:00Z",
+    home: "Kolombiya",
+    away: "Gana",
+    homeAliases: ["Kolombiya", "Colombia", "COL"],
+    awayAliases: ["Gana", "Ghana", "GHA"],
+    footballDataMatchId: 537430
   }
 ];
 
@@ -84,6 +100,33 @@ function rowFromSingleMatch(match) {
   const fixture = adaptFootballDataMatch(match, config);
   const plan = buildScorePlan([fixture], internalMatches, fixtureMap);
   return { fixture, plan, row: plan.rows[0] || null };
+}
+
+{
+  const match = providerMatch({
+    id: 537430,
+    utcDate: "2026-07-04T01:30:00Z",
+    stage: "LAST_32",
+    homeTeam: team("Colombia"),
+    awayTeam: team("Ghana"),
+    score: {
+      duration: "REGULAR",
+      fullTime: { home: 1, away: 0 },
+      regularTime: { home: 1, away: 0 },
+      extraTime: null,
+      penalties: null,
+      winner: "HOME_TEAM"
+    }
+  });
+  const extracted = extractPredictionScoreFromFootballData(match);
+  assert.deepStrictEqual(extracted.ok && [extracted.home_score, extracted.away_score], [1, 0]);
+
+  const { plan, row } = rowFromSingleMatch(match);
+  assert.strictEqual(row.match_id, 88);
+  assert.strictEqual(row.home_score, 1);
+  assert.strictEqual(row.away_score, 0);
+  assert.strictEqual(row.status, "finished");
+  assert.strictEqual(plan.syncMetadataByMatchId.get(88).provider_match_id, 537430);
 }
 
 {
@@ -208,6 +251,98 @@ function rowFromSingleMatch(match) {
     "missing_regular_time_score_for_knockout"
   );
   assert.strictEqual(plan.report.skipped[0].action, "skipped");
+}
+
+{
+  const match = providerMatch({
+    id: 537430,
+    utcDate: "2026-07-04T01:30:00Z",
+    stage: "LAST_32",
+    homeTeam: team("Colombia"),
+    awayTeam: team("Ghana"),
+    score: {
+      duration: "REGULAR",
+      fullTime: { home: 2, away: 0 },
+      regularTime: { home: 2, away: 0 },
+      extraTime: null,
+      penalties: null,
+      winner: "HOME_TEAM"
+    }
+  });
+  const { plan, row } = rowFromSingleMatch(match);
+  const reconciliation = reconcileFootballDataFinishedRows(
+    [row],
+    [
+      {
+        match_id: 88,
+        home_score: 1,
+        away_score: 0,
+        status: "finished",
+        minute: 90,
+        source: "manual"
+      }
+    ],
+    plan.syncMetadataByMatchId
+  );
+  assert.strictEqual(reconciliation.rowsToWrite.length, 0);
+  assert.strictEqual(reconciliation.actions.length, 1);
+  assert.strictEqual(reconciliation.actions[0].action, "conflict");
+  assert.strictEqual(reconciliation.actions[0].manual_review_required, true);
+  assert.strictEqual(reconciliation.actions[0].stored_score, "1-0");
+  assert.strictEqual(reconciliation.actions[0].provider_score, "2-0");
+  assert.strictEqual(reconciliation.actions[0].source, "manual");
+  assert.strictEqual(reconciliation.actions[0].provider_match_id, 537430);
+  assert.strictEqual(reconciliation.actions[0].home, "Colombia");
+  assert.strictEqual(reconciliation.actions[0].away, "Ghana");
+  assert.strictEqual(reconciliation.actions[0].stage, "round_32");
+  assert.deepStrictEqual(reconciliation.actions[0].duration_fields, {
+    top_level: null,
+    score: "REGULAR",
+    selected: "REGULAR"
+  });
+}
+
+{
+  const match = providerMatch({
+    id: 537430,
+    utcDate: "2026-07-04T01:30:00Z",
+    stage: "LAST_32",
+    homeTeam: team("Colombia"),
+    awayTeam: team("Ghana"),
+    score: {
+      duration: "REGULAR",
+      fullTime: { home: 1, away: 0 },
+      regularTime: { home: 1, away: 0 },
+      extraTime: null,
+      penalties: null,
+      winner: "HOME_TEAM"
+    }
+  });
+  const { plan, row } = rowFromSingleMatch(match);
+  const reconciliation = reconcileFootballDataFinishedRows(
+    [row],
+    [
+      {
+        match_id: 88,
+        home_score: 2,
+        away_score: 0,
+        status: "finished",
+        minute: 90,
+        source: "football-data"
+      }
+    ],
+    plan.syncMetadataByMatchId
+  );
+  assert.strictEqual(reconciliation.rowsToWrite.length, 0);
+  assert.strictEqual(reconciliation.actions.length, 1);
+  assert.strictEqual(reconciliation.actions[0].action, "conflict");
+  assert.strictEqual(reconciliation.actions[0].manual_review_required, true);
+  assert.strictEqual(reconciliation.actions[0].stored_score, "2-0");
+  assert.strictEqual(reconciliation.actions[0].provider_score, "1-0");
+  assert.strictEqual(
+    reconciliation.actions[0].reason,
+    "Stored final score differs from provider final score; automatic overwrite skipped."
+  );
 }
 
 {

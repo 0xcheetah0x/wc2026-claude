@@ -46,6 +46,81 @@ export type PredictionScoreExtraction =
       };
     };
 
+export type ScoreDurationFields = {
+  top_level?: unknown;
+  score?: unknown;
+  selected?: unknown;
+};
+
+export type FinishedScoreRowForPolicy = {
+  match_id: number;
+  home_score: number;
+  away_score: number;
+  status: string;
+  minute?: number;
+  source?: string | null;
+  provider_updated_at?: string | null;
+};
+
+export type ExistingScoreRowForPolicy = {
+  match_id: number;
+  home_score: number;
+  away_score: number;
+  status: string;
+  minute?: number;
+  source?: string | null;
+  provider_updated_at?: string | null;
+};
+
+export type FinishedScoreConflictMetadata = {
+  provider_match_id?: number | null;
+  provider_fixture_id?: number | null;
+  home?: string | null;
+  away?: string | null;
+  internal_home?: string | null;
+  internal_away?: string | null;
+  stage?: string | null;
+  provider_stage?: string | null;
+  duration?: string | null;
+  duration_fields?: ScoreDurationFields | null;
+};
+
+export type FinishedScoreConflict = {
+  action: "conflict";
+  manual_review_required: true;
+  match_id: number;
+  provider_match_id: number | null;
+  provider_fixture_id: number | null;
+  home: string | null;
+  away: string | null;
+  internal_home: string | null;
+  internal_away: string | null;
+  stage: string | null;
+  provider_stage: string | null;
+  duration: string | null;
+  duration_fields: {
+    top_level: unknown;
+    score: unknown;
+    selected: unknown;
+  };
+  source: string | null;
+  existing_source: string | null;
+  stored_score: string;
+  provider_score: string;
+  reason: string;
+};
+
+export type FinishedScoreReconciliation =
+  | {
+      action: "inserted" | "unchanged" | "corrected";
+      row: FinishedScoreRowForPolicy;
+      existing?: ExistingScoreRowForPolicy;
+    }
+  | {
+      action: "conflict";
+      conflict: FinishedScoreConflict;
+    };
+
 function optionalScoreInt(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
@@ -172,4 +247,101 @@ export function extractPredictionScoreFromFootballData(
     "unsupported_duration",
     `Finished fixture has unsupported duration "${duration}".`,
   );
+}
+
+function scoreText(row: {
+  home_score: unknown;
+  away_score: unknown;
+}): string {
+  return `${Number(row.home_score)}-${Number(row.away_score)}`;
+}
+
+function normalizeDurationFields(
+  metadata: FinishedScoreConflictMetadata,
+): FinishedScoreConflict["duration_fields"] {
+  const fields = metadata.duration_fields ?? {};
+  return {
+    top_level: fields.top_level ?? null,
+    score: fields.score ?? null,
+    selected: fields.selected ?? metadata.duration ?? null,
+  };
+}
+
+function scoreConflict(
+  row: FinishedScoreRowForPolicy,
+  existing: ExistingScoreRowForPolicy,
+  metadata: FinishedScoreConflictMetadata,
+  reason: string,
+): FinishedScoreConflict {
+  const durationFields = normalizeDurationFields(metadata);
+  const duration =
+    metadata.duration ??
+      (durationFields.selected === null || durationFields.selected === undefined
+        ? null
+        : String(durationFields.selected));
+  return {
+    action: "conflict",
+    manual_review_required: true,
+    match_id: Number(row.match_id),
+    provider_match_id: metadata.provider_match_id ?? null,
+    provider_fixture_id:
+      metadata.provider_fixture_id ?? metadata.provider_match_id ?? null,
+    home: metadata.home ?? null,
+    away: metadata.away ?? null,
+    internal_home: metadata.internal_home ?? null,
+    internal_away: metadata.internal_away ?? null,
+    stage: metadata.stage ?? null,
+    provider_stage: metadata.provider_stage ?? null,
+    duration,
+    duration_fields: durationFields,
+    source: existing.source ?? null,
+    existing_source: existing.source ?? null,
+    stored_score: scoreText(existing),
+    provider_score: scoreText(row),
+    reason,
+  };
+}
+
+export function reconcileFinishedScore(
+  row: FinishedScoreRowForPolicy,
+  existing: ExistingScoreRowForPolicy | null | undefined,
+  metadata: FinishedScoreConflictMetadata = {},
+): FinishedScoreReconciliation {
+  if (!existing) {
+    return { action: "inserted", row };
+  }
+
+  const existingStatus = String(existing.status ?? "").toLowerCase();
+  const existingScore = scoreText(existing);
+  const providerScore = scoreText(row);
+
+  if (existingStatus === "finished" && existingScore === providerScore) {
+    return { action: "unchanged", row, existing };
+  }
+
+  if (String(existing.source ?? "").toLowerCase() === "manual") {
+    return {
+      action: "conflict",
+      conflict: scoreConflict(
+        row,
+        existing,
+        metadata,
+        "Existing manual score row is protected from automatic overwrite.",
+      ),
+    };
+  }
+
+  if (existingStatus === "finished") {
+    return {
+      action: "conflict",
+      conflict: scoreConflict(
+        row,
+        existing,
+        metadata,
+        "Stored final score differs from provider final score; automatic overwrite skipped.",
+      ),
+    };
+  }
+
+  return { action: "corrected", row, existing };
 }
