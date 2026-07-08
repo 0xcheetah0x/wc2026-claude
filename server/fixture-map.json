@@ -1620,5 +1620,77 @@
     ],
     "apiFixtureId": null,
     "footballDataMatchId": 537382
+  },
+  {
+    "id": 97,
+    "utc": "2026-07-09T20:00:00Z",
+    "home": "Fransa",
+    "away": "Fas",
+    "homeAliases": [
+      "Fransa",
+      "France",
+      "FRA"
+    ],
+    "awayAliases": [
+      "Fas",
+      "Morocco",
+      "MAR"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537383
+  },
+  {
+    "id": 98,
+    "utc": "2026-07-10T19:00:00Z",
+    "home": "İspanya",
+    "away": "Belçika",
+    "homeAliases": [
+      "İspanya",
+      "Spain",
+      "ESP"
+    ],
+    "awayAliases": [
+      "Belçika",
+      "Belgium",
+      "BEL"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537384
+  },
+  {
+    "id": 99,
+    "utc": "2026-07-11T21:00:00Z",
+    "home": "Norveç",
+    "away": "İngiltere",
+    "homeAliases": [
+      "Norveç",
+      "Norway",
+      "NOR"
+    ],
+    "awayAliases": [
+      "İngiltere",
+      "England",
+      "ENG"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537385
+  },
+  {
+    "id": 100,
+    "utc": "2026-07-12T01:00:00Z",
+    "home": "Arjantin",
+    "away": "İsviçre",
+    "homeAliases": [
+      "Arjantin",
+      "Argentina",
+      "ARG"
+    ],
+    "awayAliases": [
+      "İsviçre",
+      "Switzerland",
+      "SUI"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537386
   }
 ]

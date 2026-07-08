@@ -646,5 +646,41 @@
     "utc": "2026-07-07T20:00:00Z",
     "city": "",
     "stage": "round_16"
+  },
+  {
+    "id": 97,
+    "grp": "",
+    "h": "Fransa",
+    "a": "Fas",
+    "utc": "2026-07-09T20:00:00Z",
+    "city": "",
+    "stage": "quarter_final"
+  },
+  {
+    "id": 98,
+    "grp": "",
+    "h": "İspanya",
+    "a": "Belçika",
+    "utc": "2026-07-10T19:00:00Z",
+    "city": "",
+    "stage": "quarter_final"
+  },
+  {
+    "id": 99,
+    "grp": "",
+    "h": "Norveç",
+    "a": "İngiltere",
+    "utc": "2026-07-11T21:00:00Z",
+    "city": "",
+    "stage": "quarter_final"
+  },
+  {
+    "id": 100,
+    "grp": "",
+    "h": "Arjantin",
+    "a": "İsviçre",
+    "utc": "2026-07-12T01:00:00Z",
+    "city": "",
+    "stage": "quarter_final"
   }
 ]
