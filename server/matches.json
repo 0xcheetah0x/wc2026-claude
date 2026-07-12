@@ -682,5 +682,23 @@
     "utc": "2026-07-12T01:00:00Z",
     "city": "",
     "stage": "quarter_final"
+  },
+  {
+    "id": 101,
+    "grp": "",
+    "h": "Fransa",
+    "a": "İspanya",
+    "utc": "2026-07-14T19:00:00Z",
+    "city": "",
+    "stage": "semi_final"
+  },
+  {
+    "id": 102,
+    "grp": "",
+    "h": "İngiltere",
+    "a": "Arjantin",
+    "utc": "2026-07-15T19:00:00Z",
+    "city": "",
+    "stage": "semi_final"
   }
 ]

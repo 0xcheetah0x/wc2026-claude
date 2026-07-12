@@ -1692,5 +1692,41 @@
     ],
     "apiFixtureId": null,
     "footballDataMatchId": 537386
+  },
+  {
+    "id": 101,
+    "utc": "2026-07-14T19:00:00Z",
+    "home": "Fransa",
+    "away": "İspanya",
+    "homeAliases": [
+      "Fransa",
+      "France",
+      "FRA"
+    ],
+    "awayAliases": [
+      "İspanya",
+      "Spain",
+      "ESP"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537387
+  },
+  {
+    "id": 102,
+    "utc": "2026-07-15T19:00:00Z",
+    "home": "İngiltere",
+    "away": "Arjantin",
+    "homeAliases": [
+      "İngiltere",
+      "England",
+      "ENG"
+    ],
+    "awayAliases": [
+      "Arjantin",
+      "Argentina",
+      "ARG"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537388
   }
 ]
