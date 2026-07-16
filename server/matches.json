@@ -709,5 +709,14 @@
     "utc": "2026-07-18T21:00:00Z",
     "city": "",
     "stage": "third_place"
+  },
+  {
+    "id": 104,
+    "grp": "",
+    "h": "İspanya",
+    "a": "Arjantin",
+    "utc": "2026-07-19T19:00:00Z",
+    "city": "",
+    "stage": "final"
   }
 ]

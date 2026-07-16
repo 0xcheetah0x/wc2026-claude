@@ -1746,5 +1746,23 @@
     ],
     "apiFixtureId": null,
     "footballDataMatchId": 537389
+  },
+  {
+    "id": 104,
+    "utc": "2026-07-19T19:00:00Z",
+    "home": "İspanya",
+    "away": "Arjantin",
+    "homeAliases": [
+      "İspanya",
+      "Spain",
+      "ESP"
+    ],
+    "awayAliases": [
+      "Arjantin",
+      "Argentina",
+      "ARG"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537390
   }
 ]
