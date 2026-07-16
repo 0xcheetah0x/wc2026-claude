@@ -700,5 +700,14 @@
     "utc": "2026-07-15T19:00:00Z",
     "city": "",
     "stage": "semi_final"
+  },
+  {
+    "id": 103,
+    "grp": "",
+    "h": "Fransa",
+    "a": "İngiltere",
+    "utc": "2026-07-18T21:00:00Z",
+    "city": "",
+    "stage": "third_place"
   }
 ]

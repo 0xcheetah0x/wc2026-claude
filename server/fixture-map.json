@@ -1728,5 +1728,23 @@
     ],
     "apiFixtureId": null,
     "footballDataMatchId": 537388
+  },
+  {
+    "id": 103,
+    "utc": "2026-07-18T21:00:00Z",
+    "home": "Fransa",
+    "away": "İngiltere",
+    "homeAliases": [
+      "Fransa",
+      "France",
+      "FRA"
+    ],
+    "awayAliases": [
+      "İngiltere",
+      "England",
+      "ENG"
+    ],
+    "apiFixtureId": null,
+    "footballDataMatchId": 537389
   }
 ]
