@@ -3303,6 +3303,11 @@ const productionChampionAdapter={
     }catch(err){
       return{ok:false,error:friendlySupabaseWriteError(err)};
     }
+  },
+  getOfficialWinner:()=>productionTournamentSettings.championWinner||null,
+  loadOfficialWinner:async()=>{
+    const settings=await loadProductionTournamentSettings();
+    return settings.championWinner||null;
   }
 };
 
@@ -3326,7 +3331,7 @@ const demoGoldenBootAdapter={
 };
 
 let productionGoldenBootCache={};
-let productionTournamentSettings={goldenBootWinner:null,loaded:false};
+let productionTournamentSettings={championWinner:null,goldenBootWinner:null,loaded:false};
 const mapSupabaseGoldenBootPick=row=>row?.player_name||null;
 async function loadProductionTournamentSettings(force=false){
   if(productionTournamentSettings.loaded&&!force) return productionTournamentSettings;
@@ -3335,11 +3340,12 @@ async function loadProductionTournamentSettings(force=false){
     const {session}=await requireSupabaseUser();
     const rows=await supabaseFetch('/rest/v1/app_settings?key=eq.tournament&select=value',{token:session.access_token});
     const value=Array.isArray(rows)&&rows[0]?rows[0].value:null;
+    const championWinner=normalizeChampionTeam(value?.champion_winner)||null;
     const winner=normalizeGoldenBootName(value?.golden_boot_winner)||null;
-    productionTournamentSettings={goldenBootWinner:winner,loaded:true};
+    productionTournamentSettings={championWinner,goldenBootWinner:winner,loaded:true};
   }catch(err){
     if(isProductionMode()) console.warn('Tournament settings load failed:',safeSupabaseError(err));
-    productionTournamentSettings={goldenBootWinner:null,loaded:true};
+    productionTournamentSettings={championWinner:null,goldenBootWinner:null,loaded:true};
   }
   return productionTournamentSettings;
 }
